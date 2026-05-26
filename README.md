@@ -128,7 +128,7 @@ CodexPortable.bat --unlock
 
 ## 构建
 
-CI 自动从 [openai/codex releases](https://github.com/openai/codex/releases) 下载预编译二进制。
+CI 自动从 [openai/codex releases](https://github.com/openai/codex/releases) 下载预编译二进制，从本仓库的 `cc-switch-assets` release 下载 cc-switch GUI。
 
 手动触发构建：
 ```
@@ -140,6 +140,14 @@ GitHub → Actions → Build Codex Portable → Run workflow
 git tag v0.1.0
 git push --tags
 ```
+
+本地构建：
+```bash
+bash setup.sh             # 当前平台
+bash setup.sh --all       # 所有平台（U 盘版）
+```
+
+会自动下载 codex 二进制 + cc-switch GUI 到对应的 `bin/` 目录。
 
 ---
 

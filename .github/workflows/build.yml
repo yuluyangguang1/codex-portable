@@ -75,16 +75,29 @@ jobs:
           ls -la bin/*/
 
       - name: Download cc-switch binaries
-        env:
-          CCS_TAG: ${{ steps.ccs_ver.outputs.tag }}
         run: |
           set -e
-          BASE="https://github.com/farion1231/cc-switch/releases/download/${CCS_TAG}"
-          mkdir -p /tmp/ccs
-          # cc-switch is Tauri-based; assets vary. Best-effort: skip if not found.
-          # Users can drop in their own cc-switch binary later.
-          echo "cc-switch packaging is platform-specific; consult cc-switch releases for installers."
-          echo "Skipping automatic cc-switch packaging in CI."
+          BASE="https://github.com/yuluyangguang1/codex-portable/releases/download/cc-switch-assets"
+
+          # macOS (universal binary, same file for arm64 and x64)
+          curl -fsSL -o bin/macos-arm64/cc-switch "${BASE}/cc-switch-macos"
+          curl -fsSL -o bin/macos-x64/cc-switch "${BASE}/cc-switch-macos"
+          chmod +x bin/macos-arm64/cc-switch bin/macos-x64/cc-switch
+
+          # Linux x64
+          curl -fsSL -o bin/linux-x64/cc-switch "${BASE}/cc-switch-linux-x64"
+          chmod +x bin/linux-x64/cc-switch
+
+          # Windows x64
+          curl -fsSL -o bin/windows-x64/cc-switch.exe "${BASE}/cc-switch-windows-x64.exe"
+
+          # Verify integrity
+          curl -fsSL -o /tmp/SHA256SUMS "${BASE}/SHA256SUMS"
+          ( cd bin/macos-arm64    && shasum -a 256 -c <(grep cc-switch-macos          /tmp/SHA256SUMS | sed 's|cc-switch-macos|cc-switch|') )
+          ( cd bin/linux-x64      && shasum -a 256 -c <(grep cc-switch-linux-x64      /tmp/SHA256SUMS | sed 's|cc-switch-linux-x64|cc-switch|') )
+          ( cd bin/windows-x64    && shasum -a 256 -c <(grep cc-switch-windows-x64    /tmp/SHA256SUMS | sed 's|cc-switch-windows-x64.exe|cc-switch.exe|') )
+
+          ls -lh bin/*/cc-switch* | awk '{print $5, $NF}'
 
       - name: Set version
         id: ver
@@ -106,31 +119,31 @@ jobs:
           rsync -a --exclude='bin' --exclude='dist' --exclude='.git*' . dist/CodexPortable-macos-arm64/
           rm -rf dist/CodexPortable-macos-arm64/bin
           mkdir -p dist/CodexPortable-macos-arm64/bin/macos-arm64
-          cp bin/macos-arm64/codex dist/CodexPortable-macos-arm64/bin/macos-arm64/
-          chmod +x dist/CodexPortable-macos-arm64/bin/macos-arm64/codex
+          cp bin/macos-arm64/codex bin/macos-arm64/cc-switch dist/CodexPortable-macos-arm64/bin/macos-arm64/
+          chmod +x dist/CodexPortable-macos-arm64/bin/macos-arm64/codex dist/CodexPortable-macos-arm64/bin/macos-arm64/cc-switch
 
           # macOS x64
           mkdir -p dist/CodexPortable-macos-x64
           rsync -a --exclude='bin' --exclude='dist' --exclude='.git*' . dist/CodexPortable-macos-x64/
           rm -rf dist/CodexPortable-macos-x64/bin
           mkdir -p dist/CodexPortable-macos-x64/bin/macos-x64
-          cp bin/macos-x64/codex dist/CodexPortable-macos-x64/bin/macos-x64/
-          chmod +x dist/CodexPortable-macos-x64/bin/macos-x64/codex
+          cp bin/macos-x64/codex bin/macos-x64/cc-switch dist/CodexPortable-macos-x64/bin/macos-x64/
+          chmod +x dist/CodexPortable-macos-x64/bin/macos-x64/codex dist/CodexPortable-macos-x64/bin/macos-x64/cc-switch
 
           # Linux x64
           mkdir -p dist/CodexPortable-linux-x64
           rsync -a --exclude='bin' --exclude='dist' --exclude='.git*' . dist/CodexPortable-linux-x64/
           rm -rf dist/CodexPortable-linux-x64/bin
           mkdir -p dist/CodexPortable-linux-x64/bin/linux-x64
-          cp bin/linux-x64/codex dist/CodexPortable-linux-x64/bin/linux-x64/
-          chmod +x dist/CodexPortable-linux-x64/bin/linux-x64/codex
+          cp bin/linux-x64/codex bin/linux-x64/cc-switch dist/CodexPortable-linux-x64/bin/linux-x64/
+          chmod +x dist/CodexPortable-linux-x64/bin/linux-x64/codex dist/CodexPortable-linux-x64/bin/linux-x64/cc-switch
 
           # Windows x64
           mkdir -p dist/CodexPortable-windows-x64
           rsync -a --exclude='bin' --exclude='dist' --exclude='.git*' . dist/CodexPortable-windows-x64/
           rm -rf dist/CodexPortable-windows-x64/bin
           mkdir -p dist/CodexPortable-windows-x64/bin/windows-x64
-          cp bin/windows-x64/codex.exe dist/CodexPortable-windows-x64/bin/windows-x64/
+          cp bin/windows-x64/codex.exe bin/windows-x64/cc-switch.exe dist/CodexPortable-windows-x64/bin/windows-x64/
 
           # Zip them
           cd dist
@@ -155,6 +168,11 @@ jobs:
             - Codex version: ${{ steps.codex_ver.outputs.tag }}
             - Build version: ${{ steps.ver.outputs.version }}
 
-            **Note:** cc-switch GUI is not bundled automatically.
-            Download cc-switch from https://github.com/farion1231/cc-switch/releases
-            and drop the binary into the matching bin/ folder.
+            **Bundled:** Codex CLI binary + cc-switch GUI for the matching platform.
+
+            Download the zip for your platform, extract anywhere (USB drive recommended),
+            and double-click the launcher:
+
+            - macOS:   `CodexPortable.command`
+            - Linux:   `./CodexPortable.sh`
+            - Windows: `CodexPortable.bat`

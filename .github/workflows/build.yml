@@ -100,8 +100,6 @@ jobs:
           VER: ${{ steps.ver.outputs.version }}
         run: |
           set -e
-          # Common files
-          COMMON=(README.md .gitignore docs/ system/ 2>/dev/null || true)
 
           # macOS arm64
           mkdir -p dist/CodexPortable-macos-arm64

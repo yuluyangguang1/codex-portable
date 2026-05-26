@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>codex portable · 方盒 · yu.ai</title>
+<meta name="description" content="Codex Portable · OpenAI Codex CLI 便携版 · 终端编程搭档 · U 盘即走 · 零安装 · 跨平台">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai:wght@400;700&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23041c1c'/%3E%3Cg fill='none' stroke='%23ffe6cb' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M 28 32 L 42 60 M 56 32 L 42 60 L 36 78'/%3E%3Cpath d='M 64 32 L 64 60 Q 64 72 76 72 L 76 32'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg-base:4 28 28;
+  --mid-base:255 230 203;
+  --accent-base:0 255 200;
+  --bg:rgb(var(--bg-base));
+  --mid:rgb(var(--mid-base));
+  --accent:rgb(var(--accent-base));
+  --border:rgb(var(--mid-base) / .12);
+  --hover-fill:rgb(var(--mid-base) / .05);
+  --code-bg:rgb(var(--mid-base) / .06);
+  --sans:system-ui,-apple-system,'PingFang SC','Hiragino Sans GB',sans-serif;
+  --serif:'LXGW WenKai',Georgia,serif;
+  --brush:'Ma Shan Zheng','LXGW WenKai',cursive;
+  --mono:'Courier New','Menlo',monospace;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--mid);line-height:1.8;-webkit-font-smoothing:antialiased}
+::selection{background:var(--accent);color:var(--bg)}
+a{color:var(--accent);text-decoration:none;opacity:.8;transition:opacity .2s}
+a:hover{opacity:1}
+.page{max-width:900px;margin:0 auto;padding:60px 24px 80px;position:relative}
+.huiwen{position:relative;padding-top:16px;margin-top:48px}
+.huiwen::before{content:"";display:block;width:100%;height:8px;opacity:.12;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='8' viewBox='0 0 32 8'%3E%3Cpath d='M0 4h4v4h8V4h4v4h8V4h4V0h-4v4H16V0h-4v4H4V0H0z' fill='%23ffe6cb' fill-opacity='.6'/%3E%3C/svg%3E");background-repeat:repeat-x;background-size:32px 8px;margin-bottom:16px}
+.hero{text-align:center;padding:0 0 48px}
+.hero .glyph{font-family:var(--brush);font-size:5rem;line-height:1;color:var(--accent);opacity:.85;margin-bottom:8px}
+.hero h1{font-family:var(--serif);font-size:2.4rem;font-weight:700;line-height:1.2;margin:8px 0 8px;background:linear-gradient(180deg,rgb(var(--mid-base)) 0%,rgb(var(--mid-base) / .5) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero h1 small{font-family:var(--mono);font-size:.6em;font-weight:400;letter-spacing:.15em;opacity:.5;margin-left:8px;text-transform:lowercase;-webkit-text-fill-color:rgb(var(--mid-base) / .5)}
+.hero .sub{font-family:var(--serif);font-size:1rem;opacity:.5;letter-spacing:.15rem}
+.hero .cn{font-family:var(--serif);font-size:.85rem;letter-spacing:.3rem;opacity:.4;margin-top:6px}
+.cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:24px}
+.cta a{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;transition:all .2s}
+.cta a:hover{border-color:var(--accent);color:var(--accent);opacity:1}
+.cta a.primary{border-color:var(--accent);color:var(--accent)}
+.cta a.primary:hover{background:var(--accent);color:var(--bg)}
+.section{margin-top:48px}
+.section-head{display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.section-head h2{font-family:var(--serif);font-size:1.4rem;font-weight:700}
+.section-head .num{font-family:var(--brush);font-size:2rem;color:var(--accent);opacity:.7;line-height:1}
+.section p{margin-top:12px;font-size:.95rem;opacity:.75;line-height:1.9}
+.section h3{font-family:var(--serif);font-size:1.05rem;font-weight:700;margin-top:24px;margin-bottom:8px;opacity:.85}
+.section ul,.section ol{padding-left:20px;margin-top:8px}
+.section li{font-size:.9rem;opacity:.75;margin-bottom:6px;line-height:1.8}
+pre{background:var(--code-bg);border:1px solid var(--border);padding:16px 20px;margin:12px 0;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.8;color:var(--mid);opacity:.85}
+code{font-family:var(--mono);font-size:.82rem;background:var(--code-bg);padding:2px 6px;opacity:.9}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.85rem}
+th,td{padding:10px 14px;border:1px solid var(--border);text-align:left}
+th{font-family:var(--serif);font-weight:600;opacity:.8;background:var(--code-bg)}
+td{opacity:.7}
+.tip{padding:14px 20px;margin:16px 0;font-size:.88rem;line-height:1.8;border-left:3px solid var(--accent);background:rgb(var(--accent-base) / .03)}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin:20px 0}
+.feature{border:1px solid var(--border);padding:16px 18px;transition:background .2s}
+.feature:hover{background:var(--hover-fill)}
+.feature .ft{font-family:var(--serif);font-weight:700;font-size:.95rem;margin-bottom:4px}
+.feature .fd{font-size:.82rem;opacity:.6;line-height:1.7}
+.footer{margin-top:64px;padding-top:24px;border-top:1px solid var(--border);text-align:center;font-family:var(--mono);font-size:.7rem;letter-spacing:.1rem;opacity:.4;line-height:2}
+.bg-noise{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.04' numOctaves='5' seed='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.8'/%3E%3C/svg%3E");background-size:300px 300px}
+@media(max-width:640px){.hero h1{font-size:1.8rem}.hero .glyph{font-size:3.6rem}pre{font-size:.7rem;padding:12px 14px}}
+</style>
+</head>
+<body>
+<div class="bg-noise" aria-hidden="true"></div>
+<div class="page">
+
+<div class="hero">
+  <div class="glyph">盒</div>
+  <h1>codex portable<small>方盒</small></h1>
+  <p class="sub">Your terminal coding companion · in a box</p>
+  <p class="cn">为 编 程</p>
+  <div class="cta">
+    <a class="primary" href="https://github.com/yuluyangguang1/codex-portable/releases">下载 release →</a>
+    <a href="https://github.com/yuluyangguang1/codex-portable">github →</a>
+    <a href="https://yuai-r.cn/">← yu.ai</a>
+  </div>
+</div>
+
+<div class="feature-grid">
+  <div class="feature"><div class="ft">零安装</div><div class="fd">Rust 编译的单二进制，无需 Node、Rust、Python 任何运行时</div></div>
+  <div class="feature"><div class="ft">零痕迹</div><div class="fd">拔走 U 盘后电脑上不留任何数据，符号链接清理干净</div></div>
+  <div class="feature"><div class="ft">CC Switch</div><div class="fd">GUI 配置 OpenAI 兼容供应商，一键切换 DeepSeek/Kimi/GLM/中转站</div></div>
+  <div class="feature"><div class="ft">设备绑定</div><div class="fd">U 盘指纹哈希校验，复制到其他设备无法运行</div></div>
+  <div class="feature"><div class="ft">CODEX_HOME</div><div class="fd">启动时显式指向便携目录，与系统配置完全隔离</div></div>
+  <div class="feature"><div class="ft">跨平台</div><div class="fd">macOS arm64/x64 · Linux x64 · Windows x64</div></div>
+</div>
+
+<div class="section huiwen">
+  <div class="section-head"><span class="num">壹</span><h2>启动方式</h2></div>
+  <table>
+    <tr><th>平台</th><th>启动器</th></tr>
+    <tr><td>macOS</td><td>双击 <code>CodexPortable.command</code></td></tr>
+    <tr><td>Windows</td><td>双击 <code>CodexPortable.bat</code></td></tr>
+    <tr><td>Linux</td><td><code>./CodexPortable.sh</code></td></tr>
+  </table>
+  <p>首次运行 CC Switch GUI 自动打开，在 Codex 标签添加供应商保存 → Codex CLI 启动。</p>
+</div>
+
+<div class="section huiwen">
+  <div class="section-head"><span class="num">贰</span><h2>API 配置</h2></div>
+  <p>Codex CLI 通过两个文件管理配置：</p>
+  <ul>
+    <li><code>data/.codex/auth.json</code> — API Key</li>
+    <li><code>data/.codex/config.toml</code> — 模型供应商定义</li>
+  </ul>
+
+  <h3>CC Switch 自动配置</h3>
+  <p>启动后 CC Switch 切换到 Codex 标签，选择模板：</p>
+  <ul>
+    <li>OpenAI 官方</li>
+    <li>第三方中转（one-api / new-api / 等）</li>
+    <li>DeepSeek / Kimi / GLM 等国产模型</li>
+    <li>Azure OpenAI</li>
+  </ul>
+
+  <h3>手动配置示例</h3>
+  <pre>{"OPENAI_API_KEY": "sk-..."}</pre>
+  <pre>model_provider = "custom"
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+
+[model_providers.custom]
+name = "Custom"
+base_url = "https://your-provider/v1"
+wire_api = "responses"
+env_key = "OPENAI_API_KEY"</pre>
+</div>
+
+<div class="section huiwen">
+  <div class="section-head"><span class="num">叁</span><h2>设备绑定</h2></div>
+  <p>首次成功运行后，便携包绑定到当前 U 盘的文件系统 UUID。复制到其他设备运行将报错。</p>
+  <h3>解绑命令</h3>
+  <pre># macOS
+./CodexPortable.command --unlock
+
+# Linux
+./CodexPortable.sh --unlock
+
+# Windows
+CodexPortable.bat --unlock</pre>
+  <div class="tip">💡 双 lock 文件镜像，删除单个不能绕过绑定</div>
+</div>
+
+<div class="section huiwen">
+  <div class="section-head"><span class="num">肆</span><h2>四器各司其用</h2></div>
+  <table>
+    <tr><th>工具</th><th>定位</th><th>状态</th></tr>
+    <tr><td><a href="https://yuai-r.cn/openclaw/">openclaw · 百川</a></td><td>为 应 物 — 全渠道通讯枢纽</td><td>stable</td></tr>
+    <tr><td><a href="https://yuai-r.cn/hermes/">hermes · 砚墨</a></td><td>为 养 识 — 自进化 Agent</td><td>stable</td></tr>
+    <tr><td><a href="https://yuai-r.cn/claude/">claude portable · 利刃</a></td><td>为 编 程 — 终端编程搭档</td><td>stable</td></tr>
+    <tr><td><strong>codex portable · 方盒</strong></td><td>为 编 程 — OpenAI 阵营对照</td><td>新发布</td></tr>
+  </table>
+</div>
+
+<div class="footer">
+  yu.ai · 与 AI · 同在<br>
+  基于 <a href="https://github.com/openai/codex">openai/codex</a> · MIT
+</div>
+
+</div>
+</body>
+</html>

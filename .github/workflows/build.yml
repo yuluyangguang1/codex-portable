@@ -1,0 +1,162 @@
+name: Build Codex Portable
+
+on:
+  workflow_dispatch:
+    inputs:
+      codex_version:
+        description: 'Codex CLI version (e.g. rust-v0.133.0). Empty = latest release.'
+        required: false
+        default: ''
+      cc_switch_version:
+        description: 'cc-switch version tag (e.g. v3.10.0). Empty = latest.'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve Codex version
+        id: codex_ver
+        run: |
+          if [ -n "${{ github.event.inputs.codex_version }}" ]; then
+            echo "tag=${{ github.event.inputs.codex_version }}" >> $GITHUB_OUTPUT
+          else
+            tag=$(curl -sL https://api.github.com/repos/openai/codex/releases/latest | jq -r '.tag_name')
+            echo "tag=$tag" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Resolve cc-switch version
+        id: ccs_ver
+        run: |
+          if [ -n "${{ github.event.inputs.cc_switch_version }}" ]; then
+            echo "tag=${{ github.event.inputs.cc_switch_version }}" >> $GITHUB_OUTPUT
+          else
+            tag=$(curl -sL https://api.github.com/repos/farion1231/cc-switch/releases/latest | jq -r '.tag_name')
+            echo "tag=$tag" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download Codex binaries
+        env:
+          CODEX_TAG: ${{ steps.codex_ver.outputs.tag }}
+        run: |
+          set -e
+          mkdir -p bin/macos-arm64 bin/macos-x64 bin/linux-x64 bin/windows-x64
+          BASE="https://github.com/openai/codex/releases/download/${CODEX_TAG}"
+
+          # macOS arm64
+          curl -fsSL "${BASE}/codex-aarch64-apple-darwin.tar.gz" | tar -xz -C bin/macos-arm64
+          # macOS x64
+          curl -fsSL "${BASE}/codex-x86_64-apple-darwin.tar.gz" | tar -xz -C bin/macos-x64
+          # Linux x64 (musl, statically linked)
+          curl -fsSL "${BASE}/codex-x86_64-unknown-linux-musl.tar.gz" | tar -xz -C bin/linux-x64
+          # Windows x64
+          curl -fsSL -o /tmp/codex-win.tar.gz "${BASE}/codex-x86_64-pc-windows-msvc.exe.tar.gz"
+          tar -xzf /tmp/codex-win.tar.gz -C bin/windows-x64
+
+          # The release archives may extract a binary named with the target triple. Normalize.
+          for d in bin/macos-arm64 bin/macos-x64 bin/linux-x64; do
+            if [ ! -f "$d/codex" ]; then
+              found=$(find "$d" -maxdepth 2 -type f -name 'codex*' ! -name '*.tar*' | head -1 || true)
+              [ -n "$found" ] && mv "$found" "$d/codex"
+            fi
+            chmod +x "$d/codex" 2>/dev/null || true
+          done
+          if [ ! -f bin/windows-x64/codex.exe ]; then
+            found=$(find bin/windows-x64 -maxdepth 2 -type f -name '*.exe' | head -1 || true)
+            [ -n "$found" ] && mv "$found" bin/windows-x64/codex.exe
+          fi
+
+          ls -la bin/*/
+
+      - name: Download cc-switch binaries
+        env:
+          CCS_TAG: ${{ steps.ccs_ver.outputs.tag }}
+        run: |
+          set -e
+          BASE="https://github.com/farion1231/cc-switch/releases/download/${CCS_TAG}"
+          mkdir -p /tmp/ccs
+          # cc-switch is Tauri-based; assets vary. Best-effort: skip if not found.
+          # Users can drop in their own cc-switch binary later.
+          echo "cc-switch packaging is platform-specific; consult cc-switch releases for installers."
+          echo "Skipping automatic cc-switch packaging in CI."
+
+      - name: Set version
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "version=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build per-platform packages
+        env:
+          VER: ${{ steps.ver.outputs.version }}
+        run: |
+          set -e
+          # Common files
+          COMMON=(README.md .gitignore docs/ system/ 2>/dev/null || true)
+
+          # macOS arm64
+          mkdir -p dist/CodexPortable-macos-arm64
+          rsync -a --exclude='bin' --exclude='dist' --exclude='.git*' . dist/CodexPortable-macos-arm64/
+          rm -rf dist/CodexPortable-macos-arm64/bin
+          mkdir -p dist/CodexPortable-macos-arm64/bin/macos-arm64
+          cp bin/macos-arm64/codex dist/CodexPortable-macos-arm64/bin/macos-arm64/
+          chmod +x dist/CodexPortable-macos-arm64/bin/macos-arm64/codex
+
+          # macOS x64
+          mkdir -p dist/CodexPortable-macos-x64
+          rsync -a --exclude='bin' --exclude='dist' --exclude='.git*' . dist/CodexPortable-macos-x64/
+          rm -rf dist/CodexPortable-macos-x64/bin
+          mkdir -p dist/CodexPortable-macos-x64/bin/macos-x64
+          cp bin/macos-x64/codex dist/CodexPortable-macos-x64/bin/macos-x64/
+          chmod +x dist/CodexPortable-macos-x64/bin/macos-x64/codex
+
+          # Linux x64
+          mkdir -p dist/CodexPortable-linux-x64
+          rsync -a --exclude='bin' --exclude='dist' --exclude='.git*' . dist/CodexPortable-linux-x64/
+          rm -rf dist/CodexPortable-linux-x64/bin
+          mkdir -p dist/CodexPortable-linux-x64/bin/linux-x64
+          cp bin/linux-x64/codex dist/CodexPortable-linux-x64/bin/linux-x64/
+          chmod +x dist/CodexPortable-linux-x64/bin/linux-x64/codex
+
+          # Windows x64
+          mkdir -p dist/CodexPortable-windows-x64
+          rsync -a --exclude='bin' --exclude='dist' --exclude='.git*' . dist/CodexPortable-windows-x64/
+          rm -rf dist/CodexPortable-windows-x64/bin
+          mkdir -p dist/CodexPortable-windows-x64/bin/windows-x64
+          cp bin/windows-x64/codex.exe dist/CodexPortable-windows-x64/bin/windows-x64/
+
+          # Zip them
+          cd dist
+          for d in CodexPortable-*; do
+            zip -r "${d}-${VER}.zip" "$d" > /dev/null
+            echo "  packed ${d}-${VER}.zip"
+          done
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-portable-${{ steps.ver.outputs.version }}
+          path: dist/*.zip
+
+      - name: Create release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          body: |
+            Codex CLI Portable
+            - Codex version: ${{ steps.codex_ver.outputs.tag }}
+            - Build version: ${{ steps.ver.outputs.version }}
+
+            **Note:** cc-switch GUI is not bundled automatically.
+            Download cc-switch from https://github.com/farion1231/cc-switch/releases
+            and drop the binary into the matching bin/ folder.

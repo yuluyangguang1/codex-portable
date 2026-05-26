@@ -1,0 +1,22 @@
+# Platform binaries (downloaded by CI or by setup.sh)
+bin/*
+!bin/*/
+!bin/*/.gitkeep
+
+# macOS
+.DS_Store
+
+# Session data
+data/.codex/
+data/.cc-switch/
+data/**/*.jsonl
+data/**/*.jsonl.gz
+
+# Drive binding lock (per-USB, never commit)
+data/.lock
+data/.running
+
+# Temp / build
+*.tmp
+*.swp
+dist/

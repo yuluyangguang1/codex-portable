@@ -59,20 +59,26 @@ xattr -dr com.apple.quarantine "$BIN_DIR/codex" 2>/dev/null
 [ -f "$BIN_DIR/cc-switch" ] && xattr -dr com.apple.quarantine "$BIN_DIR/cc-switch" 2>/dev/null
 
 # ═══════════════════════════════════════════
-# 单实例锁
+# 单实例锁（原子 mkdir 持锁，避免 [-f] 检查 + 写 PID 的 TOCTOU 竞态）
 # ═══════════════════════════════════════════
 RUN_LOCK="$SCRIPT_DIR/data/.running"
 mkdir -p "$SCRIPT_DIR/data"
-if [ -f "$RUN_LOCK" ]; then
-    PREV_PID=$(cat "$RUN_LOCK" 2>/dev/null | head -1 | tr -d '[:space:]')
+if [ -d "$RUN_LOCK" ]; then
+    PREV_PID=""
+    [ -f "$RUN_LOCK/pid" ] && PREV_PID=$(cat "$RUN_LOCK/pid" 2>/dev/null | tr -d '[:space:]')
     if [ -n "${PREV_PID:-}" ] && kill -0 "$PREV_PID" 2>/dev/null; then
         echo "  [info] 已有另一个实例正在运行 (PID $PREV_PID)。"
         echo "  如果错误，请删除：$RUN_LOCK"
         exit 1
     fi
-    rm -f "$RUN_LOCK"
+    rm -rf "$RUN_LOCK" 2>/dev/null
 fi
-echo $$ > "$RUN_LOCK"
+if ! mkdir "$RUN_LOCK" 2>/dev/null; then
+    echo "  [info] 已有另一个实例正在运行 (并发启动)。"
+    echo "  如果错误，请删除：$RUN_LOCK"
+    exit 1
+fi
+echo $$ > "$RUN_LOCK/pid"
 
 # ═══════════════════════════════════════════
 # 便携目录设置
@@ -97,11 +103,20 @@ LOCK_PRESENT=0
 
 if [ "$LOCK_PRESENT" = "1" ] && [ -f "$LIB_DIR/binding.sh" ]; then
     chmod +x "$LIB_DIR/binding.sh" 2>/dev/null
-    ACTIVE_LOCK="$LOCK_FILE"
-    [ ! -f "$LOCK_FILE" ] && ACTIVE_LOCK="$LOCK_FILE2"
-    bash "$LIB_DIR/binding.sh" check "$SCRIPT_DIR" "$ACTIVE_LOCK"
-    bind_result=$?
-    if [ $bind_result -eq 1 ]; then
+    # 校验所有存在的 lock。两个文件应同 hash；任一 mismatch 即拒绝。
+    # 这样篡改其中一个也会被另一个抓到（真正的双 lock 防绕过）。
+    bind_failed=0
+    bind_warned=0
+    for active_lock in "$LOCK_FILE" "$LOCK_FILE2"; do
+        [ -f "$active_lock" ] || continue
+        bash "$LIB_DIR/binding.sh" check "$SCRIPT_DIR" "$active_lock"
+        r=$?
+        case $r in
+            1) bind_failed=1; break ;;
+            3) bind_warned=1 ;;
+        esac
+    done
+    if [ "$bind_failed" = "1" ]; then
         echo ""
         echo "  ============================================================"
         echo "  [ERROR] 此便携包已绑定到原始设备。"
@@ -115,25 +130,14 @@ if [ "$LOCK_PRESENT" = "1" ] && [ -f "$LIB_DIR/binding.sh" ]; then
         echo ""
         exit 1
     fi
-    if [ $bind_result -eq 3 ]; then
+    if [ "$bind_warned" = "1" ]; then
         echo "  [warn] 无法验证设备绑定（继续运行）。"
     fi
 fi
 
-# 一次性迁移：把系统已有数据复制到便携包
-migrate_dir() {
-    local src="$1" dst="$2"
-    if [ -d "$src" ] && [ ! -L "$src" ]; then
-        if [ -n "$(ls -A "$src" 2>/dev/null)" ] && [ -z "$(ls -A "$dst" 2>/dev/null)" ]; then
-            echo "  [migrate] 复制系统现有数据: $src → $dst"
-            cp -a "$src/." "$dst/" 2>/dev/null
-        fi
-    fi
-}
-migrate_dir "$SYS_CCS" "$PORTABLE_CCS"
-migrate_dir "$SYS_CODEX" "$PORTABLE_CODEX"
-
 # 创建符号链接：~/.cc-switch → 便携包/data/.cc-switch
+# 单路径处理迁移 + 链接（之前 migrate_dir 与 ensure_symlink 重复迁移，
+# 且 ensure_symlink 对真目录直接 rm -rf，cp 失败时会永久丢用户数据）。
 ensure_symlink() {
     local link="$1" target="$2"
     if [ -L "$link" ]; then
@@ -141,7 +145,32 @@ ensure_symlink() {
         [ "$current" = "$target" ] && return 0
         rm "$link" 2>/dev/null
     elif [ -d "$link" ]; then
-        rmdir "$link" 2>/dev/null || rm -rf "$link" 2>/dev/null
+        # 真目录 — 用户有预装的系统版本。绝不 rm -rf 用户数据。
+        if [ -n "$(ls -A "$link" 2>/dev/null)" ]; then
+            if [ -z "$(ls -A "$target" 2>/dev/null)" ]; then
+                echo "  [migrate] $link → $target"
+                # cp 失败时绝不删源数据（磁盘满/权限/锁 → 永久丢失）。
+                local cp_err
+                cp_err=$(mktemp -t codex-cp.XXXXXX 2>/dev/null) || cp_err="/tmp/codex-cp.$$"
+                if cp -a "$link/." "$target/" 2>"$cp_err"; then
+                    rm -f "$cp_err"
+                else
+                    echo "  [ERROR] 迁移失败，保留系统目录不删除：$link"
+                    [ -s "$cp_err" ] && sed 's/^/    /' "$cp_err" >&2
+                    rm -f "$cp_err"
+                    return 1
+                fi
+            else
+                # 便携包已有数据 → 备份系统目录而不是删除
+                echo "  [warn] 便携包已有数据，备份系统目录: $link"
+                local backup="${link}.before-portable.$(date +%Y%m%d-%H%M%S)"
+                mv "$link" "$backup" 2>/dev/null && echo "  [info] 系统数据已备份到: $backup"
+                ln -s "$target" "$link" 2>/dev/null
+                return 0
+            fi
+        fi
+        # 源目录空 或 cp 已成功 → 删除腾位置
+        rm -rf "$link" 2>/dev/null
     fi
     ln -s "$target" "$link" 2>/dev/null
 }
@@ -154,19 +183,22 @@ WE_STARTED_CCS=0
 # 退出清理
 cleanup() {
     if [ "$WE_STARTED_CCS" = "1" ] && [ -n "${CC_SWITCH_PID:-}" ] && kill -0 "$CC_SWITCH_PID" 2>/dev/null; then
+        # 先收集子进程：父进程被 kill 后子进程 reparent 到 PID 1，pgrep -P 就找不到了
+        local children
+        children=$(pgrep -P "$CC_SWITCH_PID" 2>/dev/null || true)
         kill -TERM "$CC_SWITCH_PID" 2>/dev/null
         for _ in 1 2 3 4 5; do
             kill -0 "$CC_SWITCH_PID" 2>/dev/null || break
             sleep 1
         done
         kill -0 "$CC_SWITCH_PID" 2>/dev/null && kill -9 "$CC_SWITCH_PID" 2>/dev/null
-        for child in $(pgrep -P "$CC_SWITCH_PID" 2>/dev/null); do
+        for child in $children; do
             kill -9 "$child" 2>/dev/null
         done
     fi
     [ -L "$SYS_CCS" ] && rm "$SYS_CCS" 2>/dev/null
     [ -L "$SYS_CODEX" ] && rm "$SYS_CODEX" 2>/dev/null
-    [ -f "$RUN_LOCK" ] && rm -f "$RUN_LOCK"
+    [ -d "$RUN_LOCK" ] && rm -rf "$RUN_LOCK"
 }
 trap cleanup EXIT INT TERM
 
@@ -228,6 +260,15 @@ if ! has_valid_config; then
             sleep 1
             break
         fi
+        # cc-switch 死亡检测：用户关掉 GUI 就立即退出，不干等 5 分钟
+        if [ "$WE_STARTED_CCS" = "1" ] && [ -n "${CC_SWITCH_PID:-}" ] && ! kill -0 "$CC_SWITCH_PID" 2>/dev/null; then
+            echo ""
+            echo "  [!] CC Switch 已退出但仍未检测到配置。请重新运行。"
+            exit 1
+        fi
+        if [ $((i % 15)) -eq 0 ]; then
+            printf "."
+        fi
     done
 
     if ! has_valid_config; then
@@ -258,6 +299,12 @@ export CODEX_HOME="$PORTABLE_CODEX"
 
 "$BIN_DIR/codex" "$@"
 CODEX_EXIT=$?
+
+# 提前清理 symlink + run lock（不依赖 trap 在 read 之后才跑）。
+# 即便用户在 read 等待时拔 U 盘，主目录也已干净。
+[ -L "$SYS_CCS" ] && rm "$SYS_CCS" 2>/dev/null
+[ -L "$SYS_CODEX" ] && rm "$SYS_CODEX" 2>/dev/null
+[ -d "$RUN_LOCK" ] && rm -rf "$RUN_LOCK"
 
 if [ $CODEX_EXIT -ne 0 ]; then
     echo ""

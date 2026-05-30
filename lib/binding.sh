@@ -30,8 +30,17 @@ get_fingerprint() {
     if [ "$os" = "Darwin" ]; then
         # macOS: use diskutil to get volume UUID
         local mount_point
-        # df -P 强制单行输出，避免设备名换行
-        mount_point=$(df -P "$abs" 2>/dev/null | tail -1 | awk '{for (i=NF; i>=1; i--) if ($i ~ /^\//) { print $i; exit }}')
+        # df -P 强制单行输出。Mount point 是第 6 列起到行尾（可能含空格）。
+        # 用 awk 提取 $6, $7, ... 拼接，比反向扫描更稳健
+        # （反向找第一个 / 的旧写法会把含空格的挂载点解析错）。
+        mount_point=$(df -P "$abs" 2>/dev/null | tail -1 | awk '{
+            line=""
+            for (i=6; i<=NF; i++) {
+                if (i>6) line = line " "
+                line = line $i
+            }
+            print line
+        }')
         [ -z "$mount_point" ] && return 1
         # Try Volume UUID first
         local uuid

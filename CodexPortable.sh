@@ -37,18 +37,23 @@ fi
 chmod +x "$BIN_DIR/codex" 2>/dev/null
 [ -f "$BIN_DIR/cc-switch" ] && chmod +x "$BIN_DIR/cc-switch" 2>/dev/null
 
-# 单实例锁
+# 单实例锁（原子 mkdir）
 RUN_LOCK="$SCRIPT_DIR/data/.running"
 mkdir -p "$SCRIPT_DIR/data"
-if [ -f "$RUN_LOCK" ]; then
-    PREV_PID=$(cat "$RUN_LOCK" 2>/dev/null | head -1 | tr -d '[:space:]')
+if [ -d "$RUN_LOCK" ]; then
+    PREV_PID=""
+    [ -f "$RUN_LOCK/pid" ] && PREV_PID=$(cat "$RUN_LOCK/pid" 2>/dev/null | tr -d '[:space:]')
     if [ -n "${PREV_PID:-}" ] && kill -0 "$PREV_PID" 2>/dev/null; then
         echo "  [info] 已有另一个实例正在运行 (PID $PREV_PID)。"
         exit 1
     fi
-    rm -f "$RUN_LOCK"
+    rm -rf "$RUN_LOCK" 2>/dev/null
 fi
-echo $$ > "$RUN_LOCK"
+if ! mkdir "$RUN_LOCK" 2>/dev/null; then
+    echo "  [info] 已有另一个实例正在运行 (并发启动)。"
+    exit 1
+fi
+echo $$ > "$RUN_LOCK/pid"
 
 # 便携目录
 PORTABLE_DATA="$SCRIPT_DIR/data"
@@ -68,11 +73,13 @@ LOCK_PRESENT=0
 [ -f "$LOCK_FILE2" ] && LOCK_PRESENT=1
 if [ "$LOCK_PRESENT" = "1" ] && [ -f "$LIB_DIR/binding.sh" ]; then
     chmod +x "$LIB_DIR/binding.sh" 2>/dev/null
-    ACTIVE_LOCK="$LOCK_FILE"
-    [ ! -f "$LOCK_FILE" ] && ACTIVE_LOCK="$LOCK_FILE2"
-    bash "$LIB_DIR/binding.sh" check "$SCRIPT_DIR" "$ACTIVE_LOCK"
-    bind_result=$?
-    if [ $bind_result -eq 1 ]; then
+    bind_failed=0
+    for active_lock in "$LOCK_FILE" "$LOCK_FILE2"; do
+        [ -f "$active_lock" ] || continue
+        bash "$LIB_DIR/binding.sh" check "$SCRIPT_DIR" "$active_lock"
+        [ $? -eq 1 ] && { bind_failed=1; break; }
+    done
+    if [ "$bind_failed" = "1" ]; then
         echo ""
         echo "  [ERROR] 此便携包已绑定到原始设备。"
         echo "  解绑：./CodexPortable.sh --unlock"
@@ -81,25 +88,35 @@ if [ "$LOCK_PRESENT" = "1" ] && [ -f "$LIB_DIR/binding.sh" ]; then
     fi
 fi
 
-# 迁移
-migrate_dir() {
-    local src="$1" dst="$2"
-    if [ -d "$src" ] && [ ! -L "$src" ] && [ -n "$(ls -A "$src" 2>/dev/null)" ] && [ -z "$(ls -A "$dst" 2>/dev/null)" ]; then
-        echo "  [migrate] $src → $dst"
-        cp -a "$src/." "$dst/" 2>/dev/null
-    fi
-}
-migrate_dir "$SYS_CCS" "$PORTABLE_CCS"
-migrate_dir "$SYS_CODEX" "$PORTABLE_CODEX"
-
-# 符号链接
+# 迁移 + 链接（单路径，绝不 rm -rf 用户数据）
 ensure_symlink() {
     local link="$1" target="$2"
     if [ -L "$link" ]; then
         [ "$(readlink "$link")" = "$target" ] && return 0
         rm "$link" 2>/dev/null
     elif [ -d "$link" ]; then
-        rmdir "$link" 2>/dev/null || rm -rf "$link" 2>/dev/null
+        if [ -n "$(ls -A "$link" 2>/dev/null)" ]; then
+            if [ -z "$(ls -A "$target" 2>/dev/null)" ]; then
+                echo "  [migrate] $link → $target"
+                local cp_err
+                cp_err=$(mktemp -t codex-cp.XXXXXX 2>/dev/null) || cp_err="/tmp/codex-cp.$$"
+                if cp -a "$link/." "$target/" 2>"$cp_err"; then
+                    rm -f "$cp_err"
+                else
+                    echo "  [ERROR] migration failed; system dir kept intact: $link"
+                    [ -s "$cp_err" ] && sed 's/^/    /' "$cp_err" >&2
+                    rm -f "$cp_err"
+                    return 1
+                fi
+            else
+                echo "  [warn] portable target not empty, backing up system dir: $link"
+                local backup="${link}.before-portable.$(date +%Y%m%d-%H%M%S)"
+                mv "$link" "$backup" 2>/dev/null && echo "  [info] system data backed up to: $backup"
+                ln -s "$target" "$link" 2>/dev/null
+                return 0
+            fi
+        fi
+        rm -rf "$link" 2>/dev/null
     fi
     ln -s "$target" "$link" 2>/dev/null
 }
@@ -111,16 +128,22 @@ WE_STARTED_CCS=0
 
 cleanup() {
     if [ "$WE_STARTED_CCS" = "1" ] && [ -n "${CC_SWITCH_PID:-}" ] && kill -0 "$CC_SWITCH_PID" 2>/dev/null; then
+        # 先收集子进程再 kill 父进程（父死后子进程 reparent，pgrep -P 找不到）
+        local children
+        children=$(pgrep -P "$CC_SWITCH_PID" 2>/dev/null || true)
         kill -TERM "$CC_SWITCH_PID" 2>/dev/null
         for _ in 1 2 3 4 5; do
             kill -0 "$CC_SWITCH_PID" 2>/dev/null || break
             sleep 1
         done
         kill -0 "$CC_SWITCH_PID" 2>/dev/null && kill -9 "$CC_SWITCH_PID" 2>/dev/null
+        for child in $children; do
+            kill -9 "$child" 2>/dev/null
+        done
     fi
     [ -L "$SYS_CCS" ] && rm "$SYS_CCS" 2>/dev/null
     [ -L "$SYS_CODEX" ] && rm "$SYS_CODEX" 2>/dev/null
-    [ -f "$RUN_LOCK" ] && rm -f "$RUN_LOCK"
+    [ -d "$RUN_LOCK" ] && rm -rf "$RUN_LOCK"
 }
 trap cleanup EXIT INT TERM
 
@@ -167,6 +190,11 @@ if ! has_valid_config; then
     for i in $(seq 1 150); do
         sleep 2
         has_valid_config && { echo "  [ok] 配置已就绪"; sleep 1; break; }
+        # cc-switch 死亡检测
+        if [ "$WE_STARTED_CCS" = "1" ] && [ -n "${CC_SWITCH_PID:-}" ] && ! kill -0 "$CC_SWITCH_PID" 2>/dev/null; then
+            echo "  [!] CC Switch 已退出但仍未检测到配置。请重新运行。"
+            exit 1
+        fi
     done
     has_valid_config || { echo "  [!] 等待超时"; exit 1; }
 fi
@@ -182,4 +210,9 @@ echo "  架构: $ARCH | 数据: 便携包内"
 echo ""
 export CODEX_HOME="$PORTABLE_CODEX"
 "$BIN_DIR/codex" "$@"
-exit $?
+CODEX_EXIT=$?
+# 提前清理（不依赖 trap）
+[ -L "$SYS_CCS" ] && rm "$SYS_CCS" 2>/dev/null
+[ -L "$SYS_CODEX" ] && rm "$SYS_CODEX" 2>/dev/null
+[ -d "$RUN_LOCK" ] && rm -rf "$RUN_LOCK"
+exit $CODEX_EXIT

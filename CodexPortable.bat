@@ -56,35 +56,49 @@ exit /b 0
 
 :after_unlock
 
-:: Single-instance check
+:: Single-instance check (atomic via mkdir)
 if not exist "%PORTABLE_DATA%" mkdir "%PORTABLE_DATA%" >nul 2>&1
-if not exist "%RUN_LOCK%" goto :run_lock_done
-set "PREV_PID="
-for /f "usebackq delims=" %%P in ("%RUN_LOCK%") do if not defined PREV_PID set "PREV_PID=%%P"
-if not defined PREV_PID goto :clear_stale_lock
-tasklist /fi "PID eq !PREV_PID!" 2>nul | find "!PREV_PID!" >nul
-if !errorlevel! EQU 0 (
-  echo   [info] Another instance is already running.
+if exist "%RUN_LOCK%" (
+  set "PREV_PID="
+  if exist "%RUN_LOCK%\pid" (
+    for /f "usebackq delims=" %%P in ("%RUN_LOCK%\pid") do if not defined PREV_PID set "PREV_PID=%%P"
+  )
+  if defined PREV_PID (
+    tasklist /fi "PID eq !PREV_PID!" 2>nul | find "!PREV_PID!" >nul
+    if !errorlevel! EQU 0 (
+      echo   [info] Another instance is already running (PID !PREV_PID!).
+      timeout /t 5 >nul 2>&1
+      exit /b 1
+    )
+  )
+  rd /s /q "%RUN_LOCK%" >nul 2>&1
+)
+mkdir "%RUN_LOCK%" 2>nul
+if !errorlevel! NEQ 0 (
+  echo   [info] Another instance is already running (concurrent start).
   timeout /t 5 >nul 2>&1
   exit /b 1
 )
-:clear_stale_lock
-del /f /q "%RUN_LOCK%" >nul 2>&1
-:run_lock_done
 
-:: Drive binding check
+:: Drive binding check (validate BOTH locks; any mismatch denies)
 set "LOCK_PRESENT=0"
 if exist "%LOCK_FILE%" set "LOCK_PRESENT=1"
 if exist "%LOCK_FILE2%" set "LOCK_PRESENT=1"
 if "!LOCK_PRESENT!"=="0" goto :binding_done
 if not exist "%LIB_DIR%\binding.ps1" goto :binding_done
 
-set "ACTIVE_LOCK=%LOCK_FILE%"
-if not exist "%LOCK_FILE%" set "ACTIVE_LOCK=%LOCK_FILE2%"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB_DIR%\binding.ps1" check "%SCRIPT_DIR_PS%" "!ACTIVE_LOCK!" >nul 2>&1
-set "BIND_RESULT=!errorlevel!"
-if "!BIND_RESULT!"=="1" goto :binding_failed
-if "!BIND_RESULT!"=="3" echo   [warn] Could not verify drive binding (continuing).
+set "BIND_FAILED=0"
+set "BIND_WARNED=0"
+for %%L in ("%LOCK_FILE%" "%LOCK_FILE2%") do (
+  if exist "%%~L" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB_DIR%\binding.ps1" check "%SCRIPT_DIR_PS%" "%%~L" >nul 2>&1
+    set "EC=!errorlevel!"
+    if "!EC!"=="1" set "BIND_FAILED=1"
+    if "!EC!"=="3" set "BIND_WARNED=1"
+  )
+)
+if "!BIND_FAILED!"=="1" goto :binding_failed
+if "!BIND_WARNED!"=="1" echo   [warn] Could not verify drive binding (continuing).
 goto :binding_done
 
 :binding_failed
@@ -115,19 +129,10 @@ if !errorlevel! EQU 0 (
 if not exist "%PORTABLE_CCS%" mkdir "%PORTABLE_CCS%"
 if not exist "%PORTABLE_CODEX%" mkdir "%PORTABLE_CODEX%"
 
-:: Migrate existing data
-if exist "%SYS_CCS%\cc-switch.db" (
-  if not exist "%PORTABLE_CCS%\cc-switch.db" (
-    echo   [migrate] Copying existing cc-switch data...
-    xcopy /e /i /y /q "%SYS_CCS%" "%PORTABLE_CCS%" >nul 2>&1
-  )
-)
-if exist "%SYS_CODEX%\auth.json" (
-  if not exist "%PORTABLE_CODEX%\auth.json" (
-    echo   [migrate] Copying existing codex data...
-    xcopy /e /i /y /q "%SYS_CODEX%" "%PORTABLE_CODEX%" >nul 2>&1
-  )
-)
+:: ensure_link handles migration in a single pass (copies when portable
+:: empty, backs up otherwise). The previous standalone xcopy left both
+:: system + portable populated, forcing ensure_link into a destructive
+:: branch. Removed.
 
 :: Create junctions
 call :ensure_link "%SYS_CCS%" "%PORTABLE_CCS%"
@@ -144,8 +149,11 @@ if !errorlevel! NEQ 0 (
   exit /b 1
 )
 
-:: Write run-lock
-echo %~1 > "%RUN_LOCK%"
+:: Write run-lock (cmd's PID via PowerShell parent lookup; wmic was
+:: removed in Win11 24H2+, and %~1 is the first CLI arg not the PID)
+for /f "delims=" %%P in ('powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter ('ProcessId = ' + $PID)).ParentProcessId" 2^>nul') do set "MY_PID=%%P"
+if not defined MY_PID set "MY_PID=%RANDOM%%RANDOM%"
+echo !MY_PID! > "%RUN_LOCK%\pid"
 
 :: Check config
 call :check_config
@@ -176,6 +184,13 @@ timeout /t 2 >nul 2>&1
 set /a WAIT_COUNT+=1
 call :check_config
 if "!HAS_CONFIG!"=="1" goto :config_ready
+if "!WE_STARTED_CCS!"=="1" (
+  tasklist /fi "ImageName eq cc-switch.exe" 2>nul | find /i "cc-switch.exe" >nul
+  if !errorlevel! NEQ 0 (
+    echo   [!] CC Switch exited before config saved. Re-run to retry.
+    goto :error_cleanup
+  )
+)
 if !WAIT_COUNT! GEQ 150 (
   echo   [!] Timeout waiting for configuration.
   goto :error_cleanup
@@ -221,7 +236,7 @@ if "!WE_STARTED_CCS!"=="1" (
 )
 call :remove_link "%SYS_CCS%"
 call :remove_link "%SYS_CODEX%"
-if exist "%RUN_LOCK%" del /f /q "%RUN_LOCK%" >nul 2>&1
+if exist "%RUN_LOCK%" rd /s /q "%RUN_LOCK%" >nul 2>&1
 exit /b 0
 
 :check_config
@@ -246,8 +261,31 @@ if not exist "%LINK%" (
 )
 fsutil reparsepoint query "%LINK%" >nul 2>&1
 if !errorlevel! EQU 0 exit /b 0
-rd "%LINK%" 2>nul
-if exist "%LINK%" rd /s /q "%LINK%" 2>nul
+REM Real directory (pre-existing system install). NEVER rd /s /q it
+REM blindly — migrate into portable first, or back it up. Destroying
+REM the user's real ~/.codex or ~/.cc-switch is unacceptable.
+if exist "%LINK%\*" (
+  set "TARGET_EMPTY=1"
+  for /f %%X in ('dir /b /a "%TARGET%" 2^>nul ^| findstr /r ".*"') do set "TARGET_EMPTY=0"
+  if "!TARGET_EMPTY!"=="1" (
+    echo   [migrate] Moving existing %LINK% into portable folder...
+    xcopy /e /i /y /q "%LINK%" "%TARGET%" >nul 2>&1
+    if !errorlevel! EQU 0 (
+      rd /s /q "%LINK%" 2>nul
+    ) else (
+      echo   [ERROR] xcopy failed (code !errorlevel!^), keeping %LINK% intact
+      exit /b 1
+    )
+  ) else (
+    REM Portable target not empty — back up system dir, don't merge/delete
+    for /f "delims=" %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMddHHmmss" 2^>nul') do set "TS=%%T"
+    if not defined TS set "TS=%RANDOM%%RANDOM%"
+    echo   [warn] Portable target not empty, backing up system dir...
+    ren "%LINK%" "%~n1.before-portable.!TS!" >nul 2>&1
+  )
+  if exist "%LINK%" ren "%LINK%" "%~n1.bak.%RANDOM%" >nul 2>&1
+)
+if exist "%LINK%" rd "%LINK%" 2>nul
 mklink /J "%LINK%" "%TARGET%" >nul 2>&1
 if !errorlevel! EQU 0 exit /b 0
 mklink /D "%LINK%" "%TARGET%" >nul 2>&1

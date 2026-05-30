@@ -47,8 +47,12 @@ function Get-Hash {
     $salted = "ClaudePortable-v1::" + $InputString
     $bytes = [Text.Encoding]::UTF8.GetBytes($salted)
     $sha = [Security.Cryptography.SHA256]::Create()
-    $hashBytes = $sha.ComputeHash($bytes)
-    return ([BitConverter]::ToString($hashBytes) -replace '-','').ToLower()
+    try {
+        $hashBytes = $sha.ComputeHash($bytes)
+        return ([BitConverter]::ToString($hashBytes) -replace '-','').ToLower()
+    } finally {
+        $sha.Dispose()
+    }
 }
 
 $fingerprint = Get-Fingerprint -Path $PortableDir

@@ -87,16 +87,58 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 .toast.ok{border-color:var(--emerald);color:var(--emerald)}
 .toast.err{border-color:var(--destructive);color:var(--destructive)}
 @media(max-width:600px){.provider-grid{grid-template-columns:1fr}.pcard{border-right:none}.pcard:nth-last-child(-n+1){border-bottom:none}.steps{flex-direction:column}.step{border-right:none;border-bottom:1px solid var(--border)}.step:last-child{border-bottom:none}}
+/* yuai nav + hero */
+.y-page{position:relative;z-index:1;max-width:1100px;margin:0 auto}
+.y-nav{display:flex;border:1px solid var(--border);border-top:none}
+.y-nav-cell{padding:14px 18px;border-right:1px solid var(--border);display:flex;align-items:center;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-muted)}
+.y-nav-cell:last-child{border-right:none;margin-left:auto}
+.y-nav-cell a{color:inherit;text-decoration:none;transition:color .15s}
+.y-nav-cell a:hover{color:var(--fg)}
+.y-brand{font-family:var(--font-serif);font-size:18px;font-weight:700;letter-spacing:.04em;color:var(--fg);text-transform:none}
+.y-hero{text-align:center;padding:48px 20px 36px;border:1px solid var(--border);border-top:none}
+.y-hero .y-xs{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--fg-muted);opacity:.7}
+.y-hero .y-display{font-family:var(--font-serif);font-size:2.8rem;font-weight:700;line-height:1.1;letter-spacing:-.01em;mix-blend-mode:plus-lighter;margin:12px 0 8px}
+.y-hero .y-sub{font-size:14px;opacity:.6;line-height:1.6}
+.y-hero .y-ver{display:inline-block;margin-top:14px;padding:3px 12px;border:1px solid var(--border);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--emerald)}
+.y-term{width:100%;max-width:520px;margin:24px auto 0;border:4px double var(--border);text-align:left}
+.y-term-h{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border)}
+.y-td{width:9px;height:9px;border-radius:50%}
+.y-td:nth-child(1){background:var(--fg)}.y-td:nth-child(2){background:var(--fg);opacity:.6}.y-td:nth-child(3){background:var(--fg);opacity:.3}
+.y-term-label{margin-left:auto;font-family:var(--font-mono);font-size:9px;letter-spacing:.15em;opacity:.4;text-transform:uppercase}
+.y-term-b{font-family:var(--font-mono);font-size:12px;line-height:1.8;padding:14px;white-space:pre-wrap;min-height:60px}
+.y-term-b .p{color:var(--accent)}.y-term-b .t{opacity:.6}
+@keyframes yblink{0%,50%{opacity:1}51%,100%{opacity:0}}
+.y-blink{display:inline-block;width:1ch;height:1.1em;background:currentColor;vertical-align:text-bottom;animation:yblink 1.2s step-end infinite}
+.y-theme-btn{background:none;border:none;cursor:pointer;color:var(--fg);opacity:.5;padding:6px;transition:opacity .2s}
+.y-theme-btn:hover{opacity:1}
+@media(max-width:640px){.y-display{font-size:2rem}.y-nav{flex-wrap:wrap}.y-hero{padding:32px 16px 24px}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hero">
-    <div class="logo">盒</div>
-    <h1>Codex CLI Portable</h1>
-    <div class="sub">配置中心 · config center</div>
-  </div>
+<div class="y-page">
 
+<nav class="y-nav">
+  <div class="y-nav-cell"><a href="https://yuai-r.cn/" class="y-brand">yu.ai</a></div>
+  <div class="y-nav-cell"><a href="https://yuai-r.cn/">codex config</a></div>
+  <div class="y-nav-cell"><a href="https://github.com/yuluyangguang1/codex-portable" target="_blank">github</a></div>
+  <div class="y-nav-cell"><button class="y-theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="切换主题"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button></div>
+</nav>
+
+<div class="y-hero">
+  <span class="y-xs">codex cli portable · config</span>
+  <h1 class="y-display">codex</h1>
+  <p class="y-sub">便携 AI 编程 Agent · 配置模型 · 一键启动</p>
+  <span class="y-ver" id="hero-ver">v0.1.1 · 零安装 · 跨平台</span>
+  <div class="y-term">
+    <div class="y-term-h"><span class="y-td"></span><span class="y-td"></span><span class="y-td"></span><span class="y-term-label">codex</span></div>
+    <div class="y-term-b" id="liveTerm"><span class="p">$ ./CodexPortable.command</span>
+<span class="t" id="termStatus"> · checking config…</span><span class="y-blink"></span></div>
+  </div>
+</div>
+
+</div>
+
+<div class="wrap">
   <div class="statusbar">
     <span class="dot" id="sdot"></span>
     <span id="stext">正在加载…</span>
@@ -241,7 +283,9 @@ document.getElementById('import-file').addEventListener('change',function(e){con
 async function opsLogs(){opsMsg('读取日志…');const r=await api('/api/logs');if(!r.available){opsMsg(r.text||'无日志','err');document.getElementById('ops-out').style.display='none';return}opsMsg('日志: '+(r.file||''),'ok');opsOut(r.text||'(空)')}
 async function opsUnbind(){if(!confirm('确定解绑当前设备？解绑后此便携包可在其他设备/位置运行。'))return;const r=await api('/api/unbind','POST',{});if(r.ok){toast('已解绑 '+r.removed+' 个锁','ok');opsMsg('已移除 '+r.removed+' 个绑定锁，下次运行将重新绑定到当前位置。','ok')}}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelector('.panel[data-panel="'+t.dataset.tab+'"]').classList.add('active')});
-async function load(){try{STATE=await api('/api/state');document.getElementById('ab-port').textContent=location.port||'17590';if(STATE.has_config){document.getElementById('sdot').className='dot on';const c=STATE.current||{};document.getElementById('stext').textContent='已配置 · '+(c.name||'')+(c.model?' · '+c.model:'');renderMain()}else{document.getElementById('sdot').className='dot off';document.getElementById('stext').textContent='未配置 — 请完成引导';renderOnboard()}}catch(e){document.getElementById('sdot').className='dot off';document.getElementById('stext').textContent='无法连接后端'}}
+function toggleTheme(){const h=document.documentElement;const cur=h.getAttribute('data-theme');const next=cur==='light'?'dark':'light';h.setAttribute('data-theme',next);try{localStorage.setItem('theme',next)}catch(e){}}
+(function(){try{const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();
+async function load(){try{STATE=await api('/api/state');document.getElementById('ab-port').textContent=location.port||'17590';const ts=document.getElementById('termStatus');if(STATE.has_config){document.getElementById('sdot').className='dot on';const c=STATE.current||{};document.getElementById('stext').textContent='已配置 · '+(c.name||'')+(c.model?' · '+c.model:'');if(ts)ts.textContent=' · ready ('+c.name+')';renderMain()}else{document.getElementById('sdot').className='dot off';document.getElementById('stext').textContent='未配置 — 请完成引导';if(ts)ts.textContent=' · awaiting config…';renderOnboard()}}catch(e){document.getElementById('sdot').className='dot off';document.getElementById('stext').textContent='无法连接后端'}}
 load();
 </script>
 </body>

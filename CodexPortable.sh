@@ -170,7 +170,10 @@ sys.exit(1)
 PYEOF
         return $?
     fi
-    return 0
+    # 无 python3 → grep 校验 codex auth.json
+    grep -qE '"OPENAI_API_KEY"[[:space:]]*:[[:space:]]*"[^"]{6,}"' "$auth_file" 2>/dev/null && return 0
+    grep -qE '"access_token"[[:space:]]*:[[:space:]]*"[^"]+"' "$auth_file" 2>/dev/null && return 0
+    return 1
 }
 
 if ! has_valid_config; then

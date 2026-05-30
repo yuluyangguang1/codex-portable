@@ -230,7 +230,15 @@ sys.exit(1)
 PYEOF
         return $?
     fi
-    return 0
+    # 无 python3 时退化到 grep 校验（codex auth.json 是 JSON）。
+    # 之前直接 return 0 会让任何 >=20 字节的文件都通过（含无效配置）。
+    if grep -qE '"OPENAI_API_KEY"[[:space:]]*:[[:space:]]*"[^"]{6,}"' "$auth_file" 2>/dev/null; then
+        return 0
+    fi
+    if grep -qE '"access_token"[[:space:]]*:[[:space:]]*"[^"]+"' "$auth_file" 2>/dev/null; then
+        return 0
+    fi
+    return 1
 }
 
 if ! has_valid_config; then

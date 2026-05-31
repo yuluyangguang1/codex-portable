@@ -129,7 +129,7 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
   <span class="y-xs">codex cli portable · config</span>
   <h1 class="y-display">codex</h1>
   <p class="y-sub">便携 AI 编程 Agent · 配置模型 · 一键启动</p>
-  <span class="y-ver" id="hero-ver">v0.1.1 · 零安装 · 跨平台</span>
+  <span class="y-ver" id="hero-ver">v0.3.0 · 零安装 · 跨平台</span>
   <div class="y-term">
     <div class="y-term-h"><span class="y-td"></span><span class="y-td"></span><span class="y-td"></span><span class="y-term-label">codex</span></div>
     <div class="y-term-b" id="liveTerm"><span class="p">$ ./CodexPortable.command</span>
@@ -233,6 +233,12 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
         <div class="msg" id="ops-msg"></div>
         <pre id="ops-out" style="display:none;margin-top:14px;padding:12px;border:1px solid var(--border);font-family:var(--font-mono);font-size:11px;white-space:pre-wrap;word-break:break-word;max-height:340px;overflow:auto;line-height:1.6"></pre>
       </div>
+      <div class="section" style="border-top:1px solid var(--border);padding-top:20px">
+        <h2>CC Switch GUI</h2>
+        <div class="desc">原生供应商管理工具（故障转移、多应用切换等高级功能）。</div>
+        <div class="hint" style="margin-bottom:14px;line-height:1.7">配置中心已经能完成日常的供应商增删改与切换，和 CC Switch 共用同一份配置库（data/.cc-switch/cc-switch.db）。如果你想用 CC Switch 的原生界面管理更多高级选项，可以点下面的按钮单独启动它，启动后两边的修改会互相同步。</div>
+        <div class="btns"><button onclick="opsLaunchCcswitch()" id="ccswitch-btn">启动 CC Switch</button></div>
+      </div>
     </div>
     <div class="panel" data-panel="data">
       <div class="section">
@@ -283,6 +289,7 @@ function opsImport(){document.getElementById('import-file').click()}
 document.getElementById('import-file').addEventListener('change',function(e){const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=async()=>{try{const blob=JSON.parse(rd.result);const r=await api('/api/import','POST',blob);if(r.ok){toast('已导入 '+r.count+' 个供应商','ok');opsMsg('导入成功：'+r.count+' 个供应商','ok');setTimeout(load,900)}else{opsMsg('导入失败: '+(r.error||''),'err')}}catch(err){opsMsg('文件解析失败: '+err,'err')}};rd.readAsText(f);e.target.value=''});
 async function opsLogs(){opsMsg('读取日志…');const r=await api('/api/logs');if(!r.available){opsMsg(r.text||'无日志','err');document.getElementById('ops-out').style.display='none';return}opsMsg('日志: '+(r.file||''),'ok');opsOut(r.text||'(空)')}
 async function opsUnbind(){if(!confirm('确定解绑当前设备？解绑后此便携包可在其他设备/位置运行。'))return;const r=await api('/api/unbind','POST',{});if(r.ok){toast('已解绑 '+r.removed+' 个锁','ok');opsMsg('已移除 '+r.removed+' 个绑定锁，下次运行将重新绑定到当前位置。','ok')}}
+async function opsLaunchCcswitch(){const b=document.getElementById('ccswitch-btn');b.disabled=true;opsMsg('正在启动 CC Switch…','wait');try{const r=await api('/api/launch-ccswitch','POST',{});if(r.ok){toast('CC Switch 已启动','ok');opsMsg('CC Switch 已在后台启动，请查看新打开的窗口。两边共用同一份配置库，修改会互相同步。','ok')}else{opsMsg('启动失败: '+(r.message||r.error||'未知错误'),'err')}}catch(e){opsMsg('启动失败: '+e,'err')}b.disabled=false}
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelector('.panel[data-panel="'+t.dataset.tab+'"]').classList.add('active')});
 function toggleTheme(){const h=document.documentElement;const cur=h.getAttribute('data-theme');const next=cur==='light'?'dark':'light';h.setAttribute('data-theme',next);try{localStorage.setItem('theme',next)}catch(e){}}
 (function(){try{const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}})();

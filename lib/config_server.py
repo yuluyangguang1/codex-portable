@@ -13,6 +13,7 @@ Usage:
   python3 lib/config_server.py            # serve on 127.0.0.1:17590
 """
 import json
+import secrets
 import os
 import sqlite3
 import sys
@@ -33,6 +34,9 @@ CCS_DB = CCS_DIR / "cc-switch.db"
 
 PORT = 17590          # config-center port (distinct from cc-switch GUI)
 APP_TYPE = "codex"    # which cc-switch app_type this panel manages
+
+# Per-process CSRF token (same design as claude-portable + openclaw).
+SERVER_TOKEN = secrets.token_hex(32)
 
 # ── Provider catalog ────────────────────────────────────────────────
 # Codex CLI talks the OpenAI wire protocol (responses API or chat
@@ -519,6 +523,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _html(self, html):
+        html = html.replace("__CC_TOKEN__", SERVER_TOKEN)
         body = html.encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -528,6 +533,10 @@ class Handler(BaseHTTPRequestHandler):
                          "default-src 'self' 'unsafe-inline'")
         self.end_headers()
         self.wfile.write(body)
+
+    def _csrf_ok(self):
+        tok = self.headers.get("X-CC-Token", "")
+        return secrets.compare_digest(tok, SERVER_TOKEN)
 
     def log_message(self, *a):
         pass
@@ -539,23 +548,17 @@ class Handler(BaseHTTPRequestHandler):
             if self.path in ("/", "/index.html"):
                 self._html(PAGE)
             elif self.path == "/api/state":
+                cur = read_current()
+                if cur:
+                    cur = {k: v for k, v in cur.items() if k != "api_key"}
                 self._json({
                     "providers_catalog": PROVIDERS,
-                    "current": read_current(),
+                    "current": cur,
                     "saved": list_providers(),
-                    "has_config": read_current() is not None,
+                    "has_config": cur is not None,
                 })
             elif self.path == "/api/heartbeat":
                 self._json({"alive": True})
-            elif self.path == "/api/export":
-                body = json.dumps(export_config(), ensure_ascii=False, indent=2).encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header("Content-Disposition",
-                                 'attachment; filename="codex-portable-config.json"')
-                self.send_header("X-Content-Type-Options", "nosniff")
-                self.end_headers()
-                self.wfile.write(body)
             elif self.path == "/api/view":
                 self._json(view_config())
             elif self.path == "/api/logs":
@@ -569,6 +572,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self._reject_host():
+            return
+        if not self._csrf_ok():
+            self._json({"ok": False, "error": "missing or invalid token"}, 403)
             return
         try:
             n = min(int(self.headers.get("Content-Length", 0)), 1_000_000)
@@ -595,6 +601,8 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/api/unbind":
                 removed = unbind_device()
                 self._json({"ok": True, "removed": removed})
+            elif self.path == "/api/export":
+                self._json(export_config())
             else:
                 self._json({"ok": False, "error": "not found"}, 404)
         except Exception as e:

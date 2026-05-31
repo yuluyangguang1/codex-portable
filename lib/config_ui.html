@@ -6,6 +6,7 @@
 <title>Codex CLI Portable — 配置中心</title>
 <meta name="theme-color" content="#041c1c" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f5f0e8" media="(prefers-color-scheme: light)">
+<meta name="cc-token" content="__CC_TOKEN__">
 <style>
 :root{
   --bg:#041c1c;--card:#062424;--secondary:#0a2e2e;--muted:#083030;
@@ -259,7 +260,7 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 <script>
 let STATE=null,obSel=null,mSel=null;
 function toast(msg,kind){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(kind||'');setTimeout(()=>t.className='toast',2600)}
-async function api(path,method,body){const opt={method:method||'GET',headers:{'Content-Type':'application/json'}};if(body)opt.body=JSON.stringify(body);const r=await fetch(path,opt);return r.json()}
+async function api(path,method,body){const tok=(document.querySelector('meta[name="cc-token"]')||{}).content||'';const opt={method:method||'GET',headers:{'Content-Type':'application/json','X-CC-Token':tok}};if(body)opt.body=JSON.stringify(body);const r=await fetch(path,opt);return r.json()}
 function fillModels(sel,custom,provider){sel.innerHTML='';const p=STATE.providers_catalog.find(x=>x.id===provider);if(!p||p.custom||!p.models.length){sel.style.display='none';custom.style.display='block';return}sel.style.display='block';custom.style.display='none';const def=document.createElement('option');def.value='';def.textContent='（默认）';sel.appendChild(def);p.models.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o)})}
 function renderOnboard(){document.getElementById('onboard').style.display='block';document.getElementById('main').style.display='none';const g=document.getElementById('ob-grid');g.innerHTML='';STATE.providers_catalog.forEach(p=>{const d=document.createElement('div');d.className='pcard';d.innerHTML='<div class="pn">'+p.name+'</div><div class="pnote">'+p.note+'</div>';d.onclick=()=>{obSel=p.id;document.querySelectorAll('#ob-grid .pcard').forEach(x=>x.classList.remove('sel'));d.classList.add('sel');document.getElementById('ob1next').disabled=false};g.appendChild(d)})}
 function obStep(n){[1,2,3,4].forEach(i=>{document.getElementById('obs'+i).style.display=i===n?'block':'none';const s=document.getElementById('ob'+i);s.classList.toggle('active',i===n);if(i<n)s.classList.add('done');else s.classList.remove('done')})}
@@ -277,7 +278,7 @@ function opsMsg(t,kind){const m=document.getElementById('ops-msg');m.className='
 function opsOut(t){const o=document.getElementById('ops-out');o.style.display='block';o.textContent=t}
 async function opsDiagnose(){opsMsg('诊断中…');document.getElementById('ops-out').style.display='none';const r=await api('/api/diagnose');const lines=(r.checks||[]).map(c=>(c.ok?'[OK] ':'[!!] ')+c.label+(c.detail?'  — '+c.detail:''));opsMsg('诊断完成','ok');opsOut(lines.join('\n'))}
 async function opsViewConfig(){opsMsg('读取中…');const r=await api('/api/view');document.getElementById('ops-out').style.display='none';if(!r.configured){opsMsg('当前未配置','err');return}opsMsg('当前配置','ok');opsOut('供应商: '+(r.name||'')+'\nBase URL: '+(r.base_url||'')+'\n模型: '+(r.model||'(默认)')+'\nAPI Key: '+(r.api_key_masked||'')+'  ('+(r.api_key_len||0)+' 字符)')}
-function opsExport(){opsMsg('已触发下载（文件含明文密钥，请妥善保管）','ok');window.location='/api/export'}
+function opsExport(){opsMsg('正在导出…','wait');api('/api/export','POST',{}).then(d=>{if(d&&d.error){opsMsg('导出失败: '+d.error,'err');return}const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='codex-portable-config.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);opsMsg('已导出（文件含明文密钥，请妥善保管）','ok')}).catch(e=>opsMsg('导出失败: '+e,'err'))}
 function opsImport(){document.getElementById('import-file').click()}
 document.getElementById('import-file').addEventListener('change',function(e){const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=async()=>{try{const blob=JSON.parse(rd.result);const r=await api('/api/import','POST',blob);if(r.ok){toast('已导入 '+r.count+' 个供应商','ok');opsMsg('导入成功：'+r.count+' 个供应商','ok');setTimeout(load,900)}else{opsMsg('导入失败: '+(r.error||''),'err')}}catch(err){opsMsg('文件解析失败: '+err,'err')}};rd.readAsText(f);e.target.value=''});
 async function opsLogs(){opsMsg('读取日志…');const r=await api('/api/logs');if(!r.available){opsMsg(r.text||'无日志','err');document.getElementById('ops-out').style.display='none';return}opsMsg('日志: '+(r.file||''),'ok');opsOut(r.text||'(空)')}

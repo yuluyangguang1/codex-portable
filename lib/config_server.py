@@ -147,13 +147,15 @@ def list_providers():
         return out
     try:
         db = _connect()
-        rows = db.execute(
-            "SELECT id, name, is_current FROM providers WHERE app_type=? "
-            "ORDER BY is_current DESC, name", (APP_TYPE,)
-        ).fetchall()
-        db.close()
-        for r in rows:
-            out.append({"id": r[0], "name": r[1], "active": bool(r[2])})
+        try:
+            rows = db.execute(
+                "SELECT id, name, is_current FROM providers WHERE app_type=? "
+                "ORDER BY is_current DESC, name", (APP_TYPE,)
+            ).fetchall()
+            for r in rows:
+                out.append({"id": r[0], "name": r[1], "active": bool(r[2])})
+        finally:
+            db.close()
     except Exception:
         pass
     return out
@@ -179,19 +181,21 @@ def save_provider(name, base_url, api_key, model):
     meta = {"apiFormat": "openai"}
 
     db = _connect()
-    _ensure_schema(db)
-    pid = str(uuid.uuid4())
-    db.execute("UPDATE providers SET is_current=0 WHERE app_type=?", (APP_TYPE,))
-    db.execute(
-        "INSERT INTO providers (id, app_type, name, settings_config, "
-        "created_at, sort_index, meta, is_current) "
-        "VALUES (?,?,?,?,?,?,?,1)",
-        (pid, APP_TYPE, name or "Custom",
-         json.dumps(settings, ensure_ascii=False),
-         int(time.time() * 1000), 0, json.dumps(meta)),
-    )
-    db.commit()
-    db.close()
+    try:
+        _ensure_schema(db)
+        pid = str(uuid.uuid4())
+        db.execute("UPDATE providers SET is_current=0 WHERE app_type=?", (APP_TYPE,))
+        db.execute(
+            "INSERT INTO providers (id, app_type, name, settings_config, "
+            "created_at, sort_index, meta, is_current) "
+            "VALUES (?,?,?,?,?,?,?,1)",
+            (pid, APP_TYPE, name or "Custom",
+             json.dumps(settings, ensure_ascii=False),
+             int(time.time() * 1000), 0, json.dumps(meta)),
+        )
+        db.commit()
+    finally:
+        db.close()
 
     # Also write auth.json + config.toml for codex CLI direct consumption.
     # Codex reads CODEX_HOME/auth.json for the key and config.toml for
@@ -204,19 +208,34 @@ def save_provider(name, base_url, api_key, model):
     if model or base_url != "https://api.openai.com/v1":
         toml_lines = []
         if base_url != "https://api.openai.com/v1":
+            # wire_api selection: OpenAI's own endpoint speaks the
+            # Responses API, but most third-party OpenAI-compatible
+            # providers (DeepSeek, Groq, Moonshot, Zhipu, MiniMax, ...)
+            # only implement /chat/completions. Defaulting every custom
+            # provider to "responses" breaks them with a 404. Pick "chat"
+            # for non-OpenAI hosts, "responses" only for *.openai.com.
+            wire_api = "responses" if "openai.com" in base_url else "chat"
             toml_lines.append('model_provider = "custom"')
-            toml_lines.append(f'model = "{model or "gpt-4.1"}"')
+            toml_lines.append(f'model = "{_toml_escape(model or "gpt-5.5")}"')
             toml_lines.append("")
             toml_lines.append("[model_providers.custom]")
-            toml_lines.append(f'name = "{name or "Custom"}"')
-            toml_lines.append(f'base_url = "{base_url}"')
-            toml_lines.append('wire_api = "responses"')
+            toml_lines.append(f'name = "{_toml_escape(name or "Custom")}"')
+            toml_lines.append(f'base_url = "{_toml_escape(base_url)}"')
+            toml_lines.append(f'wire_api = "{wire_api}"')
             toml_lines.append('env_key = "OPENAI_API_KEY"')
         else:
-            toml_lines.append(f'model = "{model}"')
+            toml_lines.append(f'model = "{_toml_escape(model)}"')
         _atomic_write(codex_dir / "config.toml", "\n".join(toml_lines) + "\n")
 
     return pid
+
+
+def _toml_escape(s):
+    """Escape a string for a TOML double-quoted value. Without this, a
+    backslash or quote in a model/provider name or base_url would produce
+    invalid TOML and codex would fail to start."""
+    return (str(s).replace("\\", "\\\\").replace('"', '\\"')
+            .replace("\n", "").replace("\r", ""))
 
 
 def _atomic_write(path, content):
@@ -237,11 +256,13 @@ def _atomic_write(path, content):
 
 def activate_provider(pid):
     db = _connect()
-    db.execute("UPDATE providers SET is_current=0 WHERE app_type=?", (APP_TYPE,))
-    db.execute("UPDATE providers SET is_current=1 WHERE id=? AND app_type=?",
-               (pid, APP_TYPE))
-    db.commit()
-    db.close()
+    try:
+        db.execute("UPDATE providers SET is_current=0 WHERE app_type=?", (APP_TYPE,))
+        db.execute("UPDATE providers SET is_current=1 WHERE id=? AND app_type=?",
+                   (pid, APP_TYPE))
+        db.commit()
+    finally:
+        db.close()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -276,32 +297,34 @@ def import_config(blob):
     if not isinstance(blob, dict) or not isinstance(blob.get("providers"), list):
         raise ValueError("无效的配置文件格式")
     db = _connect()
-    _ensure_schema(db)
-    count = 0
-    current_id = None
-    for p in blob["providers"]:
-        pid = p.get("id") or str(uuid.uuid4())
-        name = p.get("name") or "Imported"
-        settings = p.get("settings_config") or {}
-        meta = p.get("meta") or {}
-        if not settings.get("env"):
-            continue
-        db.execute(
-            "INSERT OR REPLACE INTO providers (id, app_type, name, "
-            "settings_config, created_at, sort_index, meta, is_current) "
-            "VALUES (?,?,?,?,?,?,?,0)",
-            (pid, APP_TYPE, name, json.dumps(settings, ensure_ascii=False),
-             int(time.time() * 1000), 0, json.dumps(meta)),
-        )
-        count += 1
-        if p.get("is_current"):
-            current_id = pid
-    if current_id:
-        db.execute("UPDATE providers SET is_current=0 WHERE app_type=?", (APP_TYPE,))
-        db.execute("UPDATE providers SET is_current=1 WHERE id=? AND app_type=?",
-                   (current_id, APP_TYPE))
-    db.commit()
-    db.close()
+    try:
+        _ensure_schema(db)
+        count = 0
+        current_id = None
+        for p in blob["providers"]:
+            pid = p.get("id") or str(uuid.uuid4())
+            name = p.get("name") or "Imported"
+            settings = p.get("settings_config") or {}
+            meta = p.get("meta") or {}
+            if not settings.get("env"):
+                continue
+            db.execute(
+                "INSERT OR REPLACE INTO providers (id, app_type, name, "
+                "settings_config, created_at, sort_index, meta, is_current) "
+                "VALUES (?,?,?,?,?,?,?,0)",
+                (pid, APP_TYPE, name, json.dumps(settings, ensure_ascii=False),
+                 int(time.time() * 1000), 0, json.dumps(meta)),
+            )
+            count += 1
+            if p.get("is_current"):
+                current_id = pid
+        if current_id:
+            db.execute("UPDATE providers SET is_current=0 WHERE app_type=?", (APP_TYPE,))
+            db.execute("UPDATE providers SET is_current=1 WHERE id=? AND app_type=?",
+                       (current_id, APP_TYPE))
+        db.commit()
+    finally:
+        db.close()
     return count
 
 
@@ -322,9 +345,21 @@ def read_logs(max_lines=200):
     codex_dir = DATA_DIR / ".codex"
     if not codex_dir.exists():
         return {"available": False, "text": "暂无日志（data/.codex/ 不存在）"}
+    # If data/.codex is a symlink (active session), refuse to traverse the
+    # target — it's the system ~/.codex, which holds auth.json with the
+    # API key. Surfacing its contents in the panel would be a secret leak.
+    if codex_dir.is_symlink():
+        return {"available": False,
+                "text": "data/.codex 是符号链接（活跃会话中），日志在终端查看更安全"}
     candidates = []
     try:
         for p in codex_dir.rglob("*"):
+            # Skip symlinks inside the dir too (defense in depth).
+            if p.is_symlink():
+                continue
+            # Never surface auth.json / config.toml — they hold secrets.
+            if p.name in ("auth.json", "config.toml"):
+                continue
             if p.is_file() and p.suffix in (".log", ".jsonl", ".txt"):
                 try:
                     candidates.append((p.stat().st_mtime, p))

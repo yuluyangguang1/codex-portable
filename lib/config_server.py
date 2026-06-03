@@ -208,20 +208,15 @@ def save_provider(name, base_url, api_key, model):
     if model or base_url != "https://api.openai.com/v1":
         toml_lines = []
         if base_url != "https://api.openai.com/v1":
-            # wire_api selection: OpenAI's own endpoint speaks the
-            # Responses API, but most third-party OpenAI-compatible
-            # providers (DeepSeek, Groq, Moonshot, Zhipu, MiniMax, ...)
-            # only implement /chat/completions. Defaulting every custom
-            # provider to "responses" breaks them with a 404. Pick "chat"
-            # for non-OpenAI hosts, "responses" only for *.openai.com.
-            wire_api = "responses" if "openai.com" in base_url else "chat"
+            # Codex v0.136+ only supports wire_api = "responses".
+            # The "chat" mode was removed.
             toml_lines.append('model_provider = "custom"')
             toml_lines.append(f'model = "{_toml_escape(model or "gpt-5.5")}"')
             toml_lines.append("")
             toml_lines.append("[model_providers.custom]")
             toml_lines.append(f'name = "{_toml_escape(name or "Custom")}"')
             toml_lines.append(f'base_url = "{_toml_escape(base_url)}"')
-            toml_lines.append(f'wire_api = "{wire_api}"')
+            toml_lines.append('wire_api = "responses"')
             toml_lines.append('env_key = "OPENAI_API_KEY"')
         else:
             toml_lines.append(f'model = "{_toml_escape(model)}"')

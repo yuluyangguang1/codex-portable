@@ -19,21 +19,22 @@ def check(name, cond, detail=""):
     print(f"  {'[OK]' if cond else '[!!]'} {name}" + (f": {detail}" if not cond else ""))
     if not cond: errors.append(name)
 
-# 1. save a DeepSeek (non-openai) provider -> wire_api should be "chat"
+# 1. save a DeepSeek (non-openai) provider -> wire_api should be "responses"
 m.save_provider("DeepSeek", "https://api.deepseek.com/v1", "sk-test1234567890", "deepseek-v4-pro")
 toml = (Path(tmp) / ".codex" / "config.toml").read_text()
-check("deepseek wire_api=chat", 'wire_api = "chat"' in toml, toml)
+check("deepseek wire_api=responses", 'wire_api = "responses"' in toml, toml)
 check("deepseek model written", 'deepseek-v4-pro' in toml)
 
-# 2. save an OpenAI provider -> wire_api should be "responses" (only model line)
+# 2. save an OpenAI provider -> only model line (wire_api defaults to responses)
 m.save_provider("OpenAI", "https://api.openai.com/v1", "sk-test1234567890", "gpt-5.5")
 toml2 = (Path(tmp) / ".codex" / "config.toml").read_text()
-check("openai uses model line", 'model = "gpt-5.5"' in toml2)
+check("openai model line", 'model = "gpt-5.5"' in toml2)
+check("openai no custom section", 'model_providers.custom' not in toml2)
 
 # 3. toml escape: malicious name with quote
 m.save_provider('Ev"il', "https://api.groq.com/openai/v1", "gsk_test1234567890", 'mod"el')
 toml3 = (Path(tmp) / ".codex" / "config.toml").read_text()
-check("groq wire_api=chat", 'wire_api = "chat"' in toml3)
+check("groq wire_api=responses", 'wire_api = "responses"' in toml3)
 check("toml escapes quotes", '\\"' in toml3, toml3)
 # verify it's parseable as TOML if tomllib available
 try:

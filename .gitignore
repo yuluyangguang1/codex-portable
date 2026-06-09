@@ -21,4 +21,3 @@ data/.running
 *.swp
 dist/
 __pycache__/
-__pycache__/

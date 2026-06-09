@@ -83,7 +83,7 @@ get_fingerprint() {
 compute_hash() {
     local input="$1"
     [ -z "$input" ] && return 1
-    local salted="ClaudePortable-v1::${input}"
+    local salted="CodexPortable-v1::${input}"
     if command -v sha256sum >/dev/null 2>&1; then
         printf '%s' "$salted" | sha256sum | awk '{print $1}'
     elif command -v shasum >/dev/null 2>&1; then

@@ -123,40 +123,42 @@ jobs:
       - name: Download Python standalone (macOS + Linux)
         run: |
           set -e
-          # python-build-standalone by indygreg — fully self-contained, no system deps
+          # python-build-standalone by astral-sh — fully self-contained, no system deps
+          # File names include +DATE suffix (e.g. cpython-3.12.10+202****0409-...), so we
+          # resolve the exact URL via GitHub API instead of hardcoding.
           PBS_TAG="20250409"
           PBS_BASE="https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_TAG}"
 
-          # macOS arm64
-          curl -fsSL "${PBS_BASE}/cpython-3.12.10-aarch64-apple-darwin-install_only_stripped.tar.gz" | tar -xz -C bin/macos-arm64
-          mv bin/macos-arm64/python bin/macos-arm64/python3-bin 2>/dev/null || true
-          # Create a wrapper so scripts can call python3
-          cat > bin/macos-arm64/python3 <<'WRAP'
-          #!/bin/bash
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          exec "$DIR/python3-bin/bin/python3" "$@"
-          WRAP
-          chmod +x bin/macos-arm64/python3
+          resolve_asset() {
+            local pattern="$1"
+            # Use gh CLI to find the asset by glob pattern
+            local name
+            name=$(gh release view "$PBS_TAG" --repo astral-sh/python-build-standalone               --json assets --jq ".assets[].name" 2>/dev/null | grep "$pattern" | head -1)
+            if [ -z "$name" ]; then
+              echo "  [!] Asset not found: $pattern" >&2
+              return 1
+            fi
+            echo "${PBS_BASE}/${name}"
+          }
 
-          # macOS x64
-          curl -fsSL "${PBS_BASE}/cpython-3.12.10-x86_64-apple-darwin-install_only_stripped.tar.gz" | tar -xz -C bin/macos-x64
-          mv bin/macos-x64/python bin/macos-x64/python3-bin 2>/dev/null || true
-          cat > bin/macos-x64/python3 <<'WRAP'
+          download_and_wrap() {
+            local plat="$1" pattern="$2"
+            local url
+            url=$(resolve_asset "$pattern")
+            echo "  Downloading: $url"
+            curl -fsSL "$url" | tar -xz -C "bin/$plat"
+            mv "bin/$plat/python" "bin/$plat/python3-bin" 2>/dev/null || true
+            cat > "bin/$plat/python3" <<'WRAP'
           #!/bin/bash
           DIR="$(cd "$(dirname "$0")" && pwd)"
           exec "$DIR/python3-bin/bin/python3" "$@"
           WRAP
-          chmod +x bin/macos-x64/python3
+            chmod +x "bin/$plat/python3"
+          }
 
-          # Linux x64
-          curl -fsSL "${PBS_BASE}/cpython-3.12.10-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz" | tar -xz -C bin/linux-x64
-          mv bin/linux-x64/python bin/linux-x64/python3-bin 2>/dev/null || true
-          cat > bin/linux-x64/python3 <<'WRAP'
-          #!/bin/bash
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          exec "$DIR/python3-bin/bin/python3" "$@"
-          WRAP
-          chmod +x bin/linux-x64/python3
+          download_and_wrap macos-arm64  "aarch64-apple-darwin-install_only_stripped\.tar\.gz$"
+          download_and_wrap macos-x64    "x86_64-apple-darwin-install_only_stripped\.tar\.gz$"
+          download_and_wrap linux-x64    "x86_64-unknown-linux-gnu-install_only_stripped\.tar\.gz$"
 
           ls -lh bin/macos-arm64/python3 bin/macos-x64/python3 bin/linux-x64/python3
 

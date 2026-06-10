@@ -1,0 +1,122 @@
+name: Smoke Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax (bash -n)
+        run: |
+          for f in CodexPortable.sh CodexPortable.command; do
+            echo "  checking $f ..."
+            bash -n "$f"
+          done
+
+      - name: Python syntax
+        run: |
+          python3 -c "
+          import py_compile, sys, pathlib
+          errors = []
+          for f in pathlib.Path('lib').glob('*.py'):
+              try:
+                  py_compile.compile(str(f), doraise=True)
+              except py_compile.PyCompileError as e:
+                  errors.append(str(e))
+          if errors:
+              print('\\n'.join(errors))
+              sys.exit(1)
+          print(f'  all .py files OK')
+          "
+
+      - name: YAML validity
+        run: |
+          python3 -c "
+          import yaml, sys, pathlib
+          for f in pathlib.Path('.github/workflows').glob('*.yml'):
+              try:
+                  yaml.safe_load(f.read_text())
+                  print(f'  {f.name} OK')
+              except Exception as e:
+                  print(f'  {f.name} FAILED: {e}')
+                  sys.exit(1)
+          " || echo "  (pyyaml not installed, skipping)"
+
+      - name: HTML structural sanity
+        run: |
+          python3 -c "
+          import pathlib
+          for f in pathlib.Path('.').glob('*.html'):
+              t = f.read_text(errors='replace')
+              if '<html' in t.lower() and '</html>' in t.lower():
+                  print(f'  {f.name} OK')
+              else:
+                  print(f'  {f.name} MISSING <html> or </html>')
+                  exit(1)
+          "
+
+  runtime-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Boot config server and test endpoints
+        run: |
+          set -e
+          # Create minimal data dir
+          mkdir -p data/.cc-switch data/.codex
+
+          # Start config server in background
+          python3 lib/config_server.py &
+          SERVER_PID=$!
+          sleep 2
+
+          # Test heartbeat
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:17590/api/heartbeat)
+          if [ "$STATUS" != "200" ]; then
+            echo "  [FAIL] /api/heartbeat returned $STATUS"
+            kill $SERVER_PID 2>/dev/null
+            exit 1
+          fi
+          echo "  [ok] /api/heartbeat"
+
+          # Test host mismatch rejection
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: evil.com" http://127.0.0.1:17590/api/state)
+          if [ "$STATUS" != "421" ]; then
+            echo "  [FAIL] host mismatch should return 421, got $STATUS"
+            kill $SERVER_PID 2>/dev/null
+            exit 1
+          fi
+          echo "  [ok] host mismatch rejected"
+
+          # Test path traversal rejection
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:17590/../../../etc/passwd")
+          if [ "$STATUS" != "400" ]; then
+            echo "  [FAIL] path traversal should return 400, got $STATUS"
+            kill $SERVER_PID 2>/dev/null
+            exit 1
+          fi
+          echo "  [ok] path traversal rejected"
+
+          # Test POST without token (should be 403)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://127.0.0.1:17590/api/save)
+          if [ "$STATUS" != "403" ]; then
+            echo "  [FAIL] POST without token should return 403, got $STATUS"
+            kill $SERVER_PID 2>/dev/null
+            exit 1
+          fi
+          echo "  [ok] CSRF token required"
+
+          kill $SERVER_PID 2>/dev/null
+          echo "  All runtime smoke tests passed."

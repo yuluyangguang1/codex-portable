@@ -366,12 +366,40 @@ def _toml_escape(s):
             .replace("\n", "").replace("\r", ""))
 
 
+BACKUP_DIR = DATA_DIR / ".backups"
+BACKUP_MAX = 5  # rolling backup count
+
+
 def _atomic_write(path, content):
-    """Write file atomically via tmp+rename."""
+    """Write file atomically via tmp+fsync+rename with rolling backups."""
     from pathlib import Path
+    import shutil
     p = Path(path)
+
+    # Rolling backup: copy current file before overwriting
+    if p.exists() and p.stat().st_size > 0:
+        try:
+            BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup = BACKUP_DIR / f"{p.name}.{ts}"
+            shutil.copy2(str(p), str(backup))
+            # Prune old backups (keep newest BACKUP_MAX)
+            backups = sorted(BACKUP_DIR.glob(f"{p.name}.*"),
+                             key=lambda f: f.stat().st_mtime, reverse=True)
+            for old in backups[BACKUP_MAX:]:
+                old.unlink(missing_ok=True)
+        except Exception:
+            pass  # backup failure should not block writes
+
     tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
+    # Write with fsync (critical for USB/exFAT)
+    fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
     try:
         os.replace(str(tmp), str(p))
     except Exception:
@@ -380,6 +408,26 @@ def _atomic_write(path, content):
         except Exception:
             pass
         raise
+
+
+def _safe_read(path):
+    """Read config with fallback to newest backup on failure."""
+    from pathlib import Path
+    p = Path(path)
+    try:
+        if p.exists():
+            return p.read_text(encoding="utf-8")
+    except Exception:
+        pass
+    # Fallback: try newest backup
+    try:
+        backups = sorted(BACKUP_DIR.glob(f"{p.name}.*"),
+                         key=lambda f: f.stat().st_mtime, reverse=True)
+        if backups:
+            return backups[0].read_text(encoding="utf-8")
+    except Exception:
+        pass
+    return None
 
 
 def activate_provider(pid):
@@ -810,8 +858,18 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+    def _path_safe(self):
+        """Reject path traversal attempts."""
+        p = self.path.split("?")[0]  # strip query
+        if ".." in p or "\\" in p or "\0" in p:
+            self._json({"error": "invalid path"}, 400)
+            return False
+        return True
+
     def do_GET(self):
         if self._reject_host():
+            return
+        if not self._path_safe():
             return
         try:
             if self.path in ("/", "/index.html"):
@@ -841,6 +899,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self._reject_host():
+            return
+        if not self._path_safe():
             return
         if not self._csrf_ok():
             self._json({"ok": False, "error": "missing or invalid token"}, 403)
@@ -899,6 +959,16 @@ def main():
         sys.exit(1)
     url = f"http://127.0.0.1:{actual}"
     print(f"  配置中心: {url}")
+
+    # Write runtime.json so launcher knows the actual port
+    import json as _json
+    runtime = {"config_port": actual, "config_url": url,
+               "token": SERVER_TOKEN, "pid": os.getpid()}
+    try:
+        _atomic_write(DATA_DIR / ".cc-switch" / "runtime.json",
+                      _json.dumps(runtime, indent=2))
+    except Exception:
+        pass
     if not os.environ.get("CODEX_BROWSER_OPENED"):
         try:
             webbrowser.open(url)

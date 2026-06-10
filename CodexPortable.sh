@@ -78,6 +78,16 @@ fi
 chmod +x "$BIN_DIR/codex" 2>/dev/null
 [ -f "$BIN_DIR/cc-switch" ] && chmod +x "$BIN_DIR/cc-switch" 2>/dev/null
 
+# Pre-flight self-check
+LIB_DIR="$SCRIPT_DIR/lib"
+if [ -f "$LIB_DIR/preflight.sh" ]; then
+    source "$LIB_DIR/preflight.sh"
+    preflight_check "$BIN_DIR" "$SCRIPT_DIR/data" "codex" || {
+        echo "  请修复上述错误后重试。"
+        exit 1
+    }
+fi
+
 # 单实例锁（原子 mkdir）
 RUN_LOCK="$SCRIPT_DIR/data/.running"
 mkdir -p "$SCRIPT_DIR/data"

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Codex Portable
+Comment=Codex CLI Portable + CC Switch
+Exec=bash -c 'cd "$(dirname "$(readlink -f "%k")")" && bash CodexPortable.sh'
+Icon=utilities-terminal
+Terminal=true
+Categories=Development;
+Keywords=codex;ai;cli;portable;

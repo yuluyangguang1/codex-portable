@@ -90,6 +90,16 @@ fi
 chmod +x "$BIN_DIR/codex" 2>/dev/null
 [ -f "$BIN_DIR/cc-switch" ] && chmod +x "$BIN_DIR/cc-switch" 2>/dev/null
 
+# Pre-flight self-check
+LIB_DIR="$SCRIPT_DIR/lib"
+if [ -f "$LIB_DIR/preflight.sh" ]; then
+    source "$LIB_DIR/preflight.sh"
+    preflight_check "$BIN_DIR" "$SCRIPT_DIR/data" "codex" || {
+        echo "  请修复上述错误后重试。"
+        exit 1
+    }
+fi
+
 # macOS: 移除 quarantine 属性（Gatekeeper）
 xattr -dr com.apple.quarantine "$BIN_DIR/codex" 2>/dev/null
 [ -f "$BIN_DIR/cc-switch" ] && xattr -dr com.apple.quarantine "$BIN_DIR/cc-switch" 2>/dev/null

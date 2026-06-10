@@ -123,10 +123,13 @@ LOCK_PRESENT=0
 if [ "$LOCK_PRESENT" = "1" ] && [ -f "$LIB_DIR/binding.sh" ]; then
     chmod +x "$LIB_DIR/binding.sh" 2>/dev/null
     bind_failed=0
+    bind_warned=0
     for active_lock in "$LOCK_FILE" "$LOCK_FILE2"; do
         [ -f "$active_lock" ] || continue
         bash "$LIB_DIR/binding.sh" check "$SCRIPT_DIR" "$active_lock"
-        [ $? -eq 1 ] && { bind_failed=1; break; }
+        local EC=$?
+        [ "$EC" -eq 1 ] && { bind_failed=1; break; }
+        [ "$EC" -eq 3 ] && bind_warned=1
     done
     if [ "$bind_failed" = "1" ]; then
         echo ""
@@ -135,6 +138,7 @@ if [ "$LOCK_PRESENT" = "1" ] && [ -f "$LIB_DIR/binding.sh" ]; then
         echo ""
         exit 1
     fi
+    [ "$bind_warned" = "1" ] && echo "  [warn] 无法验证设备绑定（继续启动）"
 fi
 
 # 迁移 + 链接（单路径，绝不 rm -rf 用户数据）

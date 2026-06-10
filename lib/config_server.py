@@ -32,6 +32,15 @@ DATA_DIR = PORTABLE_ROOT / "data"
 CCS_DIR = DATA_DIR / ".cc-switch"
 CCS_DB = CCS_DIR / "cc-switch.db"
 
+def _read_version():
+    vf = PORTABLE_ROOT / "VERSION"
+    try:
+        return vf.read_text(encoding="utf-8").strip()
+    except Exception:
+        return "dev"
+
+VERSION = _read_version()
+
 PORT = 17590          # config-center port (distinct from cc-switch GUI)
 APP_TYPE = "codex"    # which cc-switch app_type this panel manages
 
@@ -43,43 +52,164 @@ SERVER_TOKEN = secrets.token_hex(32)
 # completions). Third-party providers must expose an OpenAI-compatible
 # endpoint. The key is stored in auth.json as OPENAI_API_KEY, and the
 # base_url + model go into config.toml.
-# Models updated 2026-05-31.
+# Models updated 2026-06-09 (verified via OpenRouter + official APIs).
 PROVIDERS = [
+    # ── 海外主流 ──
     {"id": "openai", "name": "OpenAI 官方", "base_url": "https://api.openai.com/v1",
-     "models": ["gpt-5.5", "gpt-5.5-codex", "gpt-5.1", "gpt-5.1-mini", "o4", "o4-mini"],
-     "key_hint": "sk-...", "note": "官方直连，GPT-5.5 / Codex 最新"},
-    {"id": "openrouter", "name": "OpenRouter", "base_url": "https://openrouter.ai/api/v1",
-     "models": ["openai/gpt-5.5", "anthropic/claude-opus-4.8",
-                "google/gemini-3.1-pro-preview", "deepseek/deepseek-v4-pro",
-                "x-ai/grok-4.3", "qwen/qwen3.6-max"],
-     "key_hint": "sk-or-...", "note": "聚合平台，一个 Key 用所有模型"},
+     "models": ["gpt-5.5-pro", "gpt-5.5", "gpt-5.4-pro", "gpt-5.4",
+                "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.1-codex-max",
+                "gpt-5.1-codex", "gpt-5.1", "gpt-5-mini", "gpt-5-nano",
+                "o4-mini-high", "o4-mini", "o3", "o3-mini",
+                "gpt-4.1", "gpt-4.1-mini"],
+     "key_hint": "sk-...", "note": "官方直连，GPT-5.5 / Codex / o4 最新",
+     "tags": ["hot"]},
+    {"id": "anthropic", "name": "Anthropic (Claude)", "base_url": "https://api.anthropic.com/v1",
+     "models": ["claude-opus-4-8", "claude-opus-4-7-fast", "claude-opus-4-7",
+                "claude-opus-4-6-fast", "claude-opus-4-6", "claude-opus-4-5",
+                "claude-sonnet-4-6", "claude-opus-4", "claude-haiku-4-5"],
+     "key_hint": "sk-ant-...", "note": "Claude Opus 4.8 最新，需 Anthropic API Key",
+     "tags": ["hot"]},
+    {"id": "openrouter", "name": "OpenRouter (聚合)", "base_url": "https://openrouter.ai/api/v1",
+     "models": ["openai/gpt-5.5-pro", "openai/gpt-5.5",
+                "anthropic/claude-opus-4.8", "anthropic/claude-opus-4.7",
+                "google/gemini-3.5-flash", "google/gemini-3.1-pro-preview",
+                "deepseek/deepseek-v4-pro", "deepseek/deepseek-v4-flash",
+                "x-ai/grok-4.3", "x-ai/grok-4.20",
+                "qwen/qwen3.7-max", "qwen/qwen3.7-plus",
+                "meta-llama/llama-4-maverick", "meta-llama/llama-4-scout",
+                "moonshotai/kimi-k2.6", "z-ai/glm-5.1",
+                "minimax/minimax-m3", "mistral/mistral-large-3"],
+     "key_hint": "sk-or-...", "note": "聚合 100+ 模型，一个 Key 通用",
+     "tags": ["hot", "cheap"]},
+    {"id": "google", "name": "Google (Gemini)", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+     "models": ["gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite",
+                "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+     "key_hint": "粘贴 Google AI API Key", "note": "Gemini 3.5 最新，支持 OpenAI 兼容端点",
+     "tags": ["hot", "free"]},
+    {"id": "xai", "name": "xAI (Grok)", "base_url": "https://api.x.ai/v1",
+     "models": ["grok-4.3", "grok-4.20", "grok-4.20-multi-agent"],
+     "key_hint": "xai-...", "note": "Grok 4.3 最新，多智能体模式",
+     "tags": ["hot"]},
+    {"id": "mistral", "name": "Mistral", "base_url": "https://api.mistral.ai/v1",
+     "models": ["mistral-large-3", "mistral-large-latest", "mistral-medium-latest",
+                "mistral-small-latest", "codestral-latest", "pixtral-large-latest",
+                "ministral-8b-latest"],
+     "key_hint": "粘贴 Mistral API Key", "note": "Mistral Large 3 最新，Codestral 代码专精",
+     "tags": ["hot"]},
     {"id": "deepseek", "name": "DeepSeek", "base_url": "https://api.deepseek.com/v1",
-     "models": ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-chat", "deepseek-reasoner"],
-     "key_hint": "sk-...", "note": "国产，性价比极高，V4 系列最新"},
-    {"id": "minimax", "name": "MiniMax (海螺)", "base_url": "https://api.minimaxi.com/v1",
-     "models": ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5"],
-     "key_hint": "粘贴 MiniMax API Key", "note": "国产，OpenAI 兼容，速度快"},
-    {"id": "zhipu", "name": "智谱 GLM", "base_url": "https://open.bigmodel.cn/api/paas/v4",
-     "models": ["glm-5.1", "glm-5", "glm-4.6", "glm-4.5-air", "glm-4.5-flash"],
-     "key_hint": "粘贴智谱 API Key", "note": "国产，GLM-5 系列最新"},
-    {"id": "kimi", "name": "Kimi / Moonshot", "base_url": "https://api.moonshot.cn/v1",
-     "models": ["kimi-k2.6", "kimi-k2.5", "kimi-k2-thinking-turbo", "moonshot-v1-128k"],
-     "key_hint": "sk-...", "note": "国产，K2.6 最新，长上下文"},
-    {"id": "doubao", "name": "豆包 / 火山引擎", "base_url": "https://ark.cn-beijing.volces.com/api/v3",
-     "models": ["doubao-seed-1.6", "doubao-seed-1.6-thinking", "doubao-1.5-pro-256k"],
-     "key_hint": "粘贴火山引擎 API Key", "note": "字节跳动，Seed 1.6 最新"},
-    {"id": "dashscope", "name": "通义千问 / 阿里", "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-     "models": ["qwen3.6-max", "qwen3.6-plus", "qwen3-coder-plus", "qwen-max-latest"],
-     "key_hint": "sk-...", "note": "阿里云，Qwen 3.6 最新"},
-    {"id": "siliconflow", "name": "SiliconFlow (硅基流动)", "base_url": "https://api.siliconflow.cn/v1",
-     "models": ["deepseek-ai/DeepSeek-V4-Pro", "Qwen/Qwen3.6-Max", "moonshotai/Kimi-K2.6"],
-     "key_hint": "sk-...", "note": "国产聚合，多模型一站式"},
+     "models": ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-r1",
+                "deepseek-r1-0528", "deepseek-chat", "deepseek-reasoner"],
+     "key_hint": "sk-...", "note": "V4 系列 + R1 推理，性价比极高",
+     "tags": ["hot", "cn", "cheap"]},
     {"id": "groq", "name": "Groq", "base_url": "https://api.groq.com/openai/v1",
-     "models": ["llama-4-scout-17b-16e-instruct", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
-     "key_hint": "gsk_...", "note": "超快推理，免费额度"},
+     "models": ["llama-4-scout-17b-16e-instruct", "llama-4-maverick",
+                "llama-3.3-70b-versatile", "deepseek-r1-distill-llama-70b",
+                "qwen/qwen3-32b", "gemma2-9b-it"],
+     "key_hint": "gsk_...", "note": "超快推理，Llama 4 / DeepSeek R1 蒸馏",
+     "tags": ["fast", "free"]},
+    {"id": "perplexity", "name": "Perplexity", "base_url": "https://api.perplexity.ai",
+     "models": ["sonar-pro", "sonar-reasoning-pro", "sonar-deep-research",
+                "sonar-reasoning", "sonar"],
+     "key_hint": "pplx-...", "note": "联网搜索增强，Deep Research 深度研究",
+     "tags": ["hot"]},
+    {"id": "cohere", "name": "Cohere", "base_url": "https://api.cohere.com/v2",
+     "models": ["command-a", "command-r-plus", "command-r"],
+     "key_hint": "粘贴 Cohere API Key", "note": "Command A 最新，企业级 RAG",
+     "tags": ["free"]},
+    {"id": "amazon", "name": "Amazon (Nova)", "base_url": "https://bedrock-runtime.us-east-1.amazonaws.com/v1",
+     "models": ["nova-premier-v1", "nova-pro-v1", "nova-lite-v1", "nova-micro-v1"],
+     "key_hint": "粘贴 AWS Bedrock API Key", "note": "Amazon Nova 系列，AWS 原生",
+     "tags": ["free"]},
+    # ── 开源聚合 / 高速推理 ──
+    {"id": "together", "name": "Together", "base_url": "https://api.together.xyz/v1",
+     "models": ["meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+                "deepseek-ai/DeepSeek-V4-Pro", "Qwen/Qwen3-Coder-480B-A35B-Instruct",
+                "moonshotai/Kimi-K2.6", "zai-org/GLM-5.1",
+                "MiniMaxAI/MiniMax-M3"],
+     "key_hint": "粘贴 Together API Key", "note": "开源模型托管，Llama 4 / V4 Pro",
+     "tags": ["cheap"]},
+    {"id": "fireworks", "name": "Fireworks", "base_url": "https://api.fireworks.ai/inference/v1",
+     "models": ["accounts/fireworks/models/llama4-maverick-instruct-basic",
+                "accounts/fireworks/models/llama4-scout-instruct-basic",
+                "accounts/fireworks/models/deepseek-v4-pro",
+                "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct"],
+     "key_hint": "粘贴 Fireworks API Key", "note": "高速推理，Llama 4 / V4 Pro",
+     "tags": ["fast", "cheap"]},
+    {"id": "deepinfra", "name": "DeepInfra", "base_url": "https://api.deepinfra.com/v1/openai",
+     "models": ["deepseek-ai/DeepSeek-V4-Pro",
+                "meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+                "Qwen/Qwen3-Coder", "zai-org/GLM-5.1",
+                "moonshotai/Kimi-K2.6"],
+     "key_hint": "粘贴 DeepInfra API Key", "note": "极低价格开源模型",
+     "tags": ["cheap"]},
+    {"id": "cerebras", "name": "Cerebras", "base_url": "https://api.cerebras.ai/v1",
+     "models": ["llama-4-scout-17b-16e-instruct", "llama-4-maverick-17b-128e-instruct",
+                "llama3.3-70b", "qwen-3-coder-480b", "qwen-3-32b",
+                "deepseek-r1-distill-llama-70b"],
+     "key_hint": "粘贴 Cerebras API Key", "note": "1500 tok/s 极速推理，免费额度",
+     "tags": ["fast", "free"]},
+    # ── 国产模型 ──
+    {"id": "dashscope", "name": "通义千问 / 阿里", "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+     "models": ["qwen3.7-max", "qwen3.7-plus", "qwen3.6-max", "qwen3.6-plus",
+                "qwen3-coder-plus", "qwen3-coder", "qwen-max-latest", "qwen-plus-latest"],
+     "key_hint": "sk-...", "note": "阿里云，Qwen 3.7 最新，Coder 代码专精",
+     "tags": ["cn", "hot"]},
+    {"id": "zhipu", "name": "智谱 GLM", "base_url": "https://open.bigmodel.cn/api/paas/v4",
+     "models": ["glm-5.1", "glm-5-turbo", "glm-5", "glm-4.7", "glm-4.7-flash",
+                "glm-4.6", "glm-4.5-air"],
+     "key_hint": "粘贴智谱 API Key", "note": "GLM-5.1 最新，全系列 OpenAI 兼容",
+     "tags": ["cn", "hot"]},
+    {"id": "kimi", "name": "Kimi / Moonshot", "base_url": "https://api.moonshot.cn/v1",
+     "models": ["kimi-k2.6", "kimi-k2.5", "kimi-k2-thinking", "kimi-k2",
+                "moonshot-v1-128k"],
+     "key_hint": "sk-...", "note": "K2.6 最新，思考模式 + 长上下文",
+     "tags": ["cn", "hot"]},
+    {"id": "doubao", "name": "豆包 / 火山引擎", "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+     "models": ["doubao-seed-1.6", "doubao-seed-1.6-thinking", "doubao-1.5-pro-256k",
+                "doubao-1.5-lite-32k"],
+     "key_hint": "粘贴火山引擎 API Key", "note": "字节跳动，Seed 1.6 最新",
+     "tags": ["cn", "cheap"]},
+    {"id": "minimax", "name": "MiniMax (海螺)", "base_url": "https://api.minimaxi.com/v1",
+     "models": ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5"],
+     "key_hint": "粘贴 MiniMax API Key", "note": "M3 最新，OpenAI 兼容",
+     "tags": ["cn"]},
+    {"id": "stepfun", "name": "阶跃星辰 (Step)", "base_url": "https://api.stepfun.com/v1",
+     "models": ["step-3.7-flash", "step-3.5-flash", "step-2-16k", "step-2-mini"],
+     "key_hint": "粘贴阶跃星辰 API Key", "note": "Step 3.7 最新，速度快",
+     "tags": ["cn", "fast"]},
+    {"id": "baichuan", "name": "百川", "base_url": "https://api.baichuan-ai.com/v1",
+     "models": ["Baichuan4-Turbo", "Baichuan4-Air", "Baichuan4", "Baichuan3-Turbo"],
+     "key_hint": "粘贴百川 API Key", "note": "百川 AI，Baichuan4 最新",
+     "tags": ["cn"]},
+    {"id": "yi", "name": "零一万物", "base_url": "https://api.lingyiwanwu.com/v1",
+     "models": ["yi-lightning", "yi-large", "yi-large-turbo", "yi-medium", "yi-vision"],
+     "key_hint": "粘贴零一万物 API Key", "note": "Yi-Lightning 极速，yi-large 强推理",
+     "tags": ["cn", "fast"]},
+    {"id": "spark", "name": "讯飞星火", "base_url": "https://spark-api-open.xf-yun.com/v1",
+     "models": ["4.0Ultra", "generalv3.5", "generalv3", "lite"],
+     "key_hint": "粘贴讯飞 API Key", "note": "科大讯飞，4.0Ultra 最新",
+     "tags": ["cn"]},
+    {"id": "hunyuan", "name": "腾讯混元", "base_url": "https://api.hunyuan.cloud.tencent.com/v1",
+     "models": ["hunyuan-turbo", "hunyuan-large", "hunyuan-pro",
+                "hunyuan-standard", "hunyuan-lite"],
+     "key_hint": "粘贴腾讯混元 API Key", "note": "腾讯混元，Turbo 最新",
+     "tags": ["cn"]},
+    {"id": "ernie", "name": "文心一言 / 百度", "base_url": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat",
+     "models": ["ernie-4.5-turbo-128k", "ernie-x1-turbo", "ernie-4.0-turbo",
+                "ernie-4.0-8k", "ernie-3.5-8k"],
+     "key_hint": "粘贴百度 API Key", "note": "百度文心，ERNIE 4.5 最新",
+     "tags": ["cn"]},
+    {"id": "siliconflow", "name": "SiliconFlow (硅基流动)", "base_url": "https://api.siliconflow.cn/v1",
+     "models": ["deepseek-ai/DeepSeek-V4-Pro", "Qwen/Qwen3.7-Max",
+                "moonshotai/Kimi-K2.6", "THUDM/GLM-5.1",
+                "deepseek-ai/DeepSeek-R1"],
+     "key_hint": "sk-...", "note": "国产聚合，多模型一站式",
+     "tags": ["cn", "cheap"]},
+    # ── 自定义 ──
     {"id": "custom", "name": "自定义 / 中转站", "base_url": "",
      "models": [], "custom": True,
-     "key_hint": "粘贴中转站 API Key", "note": "填写中转站/自建网关的 base_url"},
+     "key_hint": "粘贴中转站 API Key", "note": "填写中转站/自建网关的 base_url",
+     "tags": []},
 ]
 
 
@@ -117,7 +247,7 @@ def _ensure_schema(db):
 
 
 def read_current():
-    """Return the currently-active claude provider as a dict, or None."""
+    """Return the currently-active codex provider as a dict, or None."""
     if not CCS_DB.exists():
         return None
     try:
@@ -205,22 +335,25 @@ def save_provider(name, base_url, api_key, model):
     auth = {"OPENAI_API_KEY": api_key}
     _atomic_write(codex_dir / "auth.json",
                   json.dumps(auth, ensure_ascii=False, indent=2))
-    if model or base_url != "https://api.openai.com/v1":
-        toml_lines = []
-        if base_url != "https://api.openai.com/v1":
-            # Codex v0.136+ only supports wire_api = "responses".
-            # The "chat" mode was removed.
-            toml_lines.append('model_provider = "custom"')
-            toml_lines.append(f'model = "{_toml_escape(model or "gpt-5.5")}"')
-            toml_lines.append("")
-            toml_lines.append("[model_providers.custom]")
-            toml_lines.append(f'name = "{_toml_escape(name or "Custom")}"')
-            toml_lines.append(f'base_url = "{_toml_escape(base_url)}"')
-            toml_lines.append('wire_api = "responses"')
-            toml_lines.append('env_key = "OPENAI_API_KEY"')
-        else:
-            toml_lines.append(f'model = "{_toml_escape(model)}"')
-        _atomic_write(codex_dir / "config.toml", "\n".join(toml_lines) + "\n")
+    # Always write config.toml completely (overwrite) to prevent stale
+    # provider config from a previous save lingering in the file.
+    toml_lines = []
+    if base_url != "https://api.openai.com/v1":
+        # Codex v0.136+ only supports wire_api = "responses".
+        # The "chat" mode was removed.
+        toml_lines.append('model_provider = "custom"')
+        toml_lines.append(f'model = "{_toml_escape(model or "gpt-5.5")}"')
+        toml_lines.append("")
+        toml_lines.append("[model_providers.custom]")
+        toml_lines.append(f'name = "{_toml_escape(name or "Custom")}"')
+        toml_lines.append(f'base_url = "{_toml_escape(base_url)}"')
+        toml_lines.append('wire_api = "responses"')
+        toml_lines.append('env_key = "OPENAI_API_KEY"')
+    elif model:
+        toml_lines.append(f'model = "{_toml_escape(model)}"')
+    # If neither custom provider nor custom model, write empty config
+    # to clear any stale config.toml from a previous provider.
+    _atomic_write(codex_dir / "config.toml", "\n".join(toml_lines) + ("\n" if toml_lines else ""))
 
     return pid
 
@@ -340,10 +473,18 @@ def read_logs(max_lines=200):
     codex_dir = DATA_DIR / ".codex"
     if not codex_dir.exists():
         return {"available": False, "text": "暂无日志（data/.codex/ 不存在）"}
-    # If data/.codex is a symlink (active session), refuse to traverse the
-    # target — it's the system ~/.codex, which holds auth.json with the
-    # API key. Surfacing its contents in the panel would be a secret leak.
-    if codex_dir.is_symlink():
+    # If data/.codex is a symlink or junction (active session), refuse to
+    # traverse the target — it's the system ~/.codex, which holds auth.json
+    # with the API key. Surfacing its contents in the panel would be a leak.
+    # Python's is_symlink() does NOT detect Windows junctions, so check
+    # reparse point attribute explicitly.
+    _is_link = codex_dir.is_symlink()
+    if not _is_link and os.name == "nt":
+        try:
+            _is_link = bool(os.stat(codex_dir).st_file_attributes & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+        except Exception:
+            pass
+    if _is_link:
         return {"available": False,
                 "text": "data/.codex 是符号链接（活跃会话中），日志在终端查看更安全"}
     candidates = []
@@ -455,6 +596,29 @@ def unbind_device():
     return removed
 
 
+def reset_config():
+    """Delete all codex providers from cc-switch DB and remove config files."""
+    removed = 0
+    if CCS_DB.exists():
+        try:
+            db = _connect()
+            cur = db.execute("DELETE FROM providers WHERE app_type=?", (APP_TYPE,))
+            removed = cur.rowcount
+            db.commit()
+            db.close()
+        except Exception:
+            pass
+    codex_dir = DATA_DIR / ".codex"
+    for f in ("auth.json", "config.toml"):
+        try:
+            p = codex_dir / f
+            if p.exists():
+                p.unlink()
+        except Exception:
+            pass
+    return removed
+
+
 def launch_ccswitch():
     """Launch the bundled cc-switch GUI as a detached background process.
 
@@ -537,13 +701,8 @@ def test_key(base_url, api_key, model):
             os.unlink(mac_ca)
     except Exception:
         pass
-    try:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        contexts.append(ctx)
-    except Exception:
-        pass
+    # Do NOT fall back to CERT_NONE — leaking an API key over an
+    # unauthenticated connection is worse than failing the test.
 
     last_err = "无法连接"
     for ctx in contexts:
@@ -589,7 +748,8 @@ _UI_FILE = SCRIPT_DIR / "config_ui.html"
 
 def _load_page():
     try:
-        return _UI_FILE.read_text(encoding="utf-8")
+        html = _UI_FILE.read_text(encoding="utf-8")
+        return html.replace("__VERSION__", VERSION)
     except Exception:
         return ("<html><body style='font-family:sans-serif;padding:40px'>"
                 "<h2>配置中心 UI 文件缺失</h2><p>lib/config_ui.html 未找到。"
@@ -686,7 +846,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": "missing or invalid token"}, 403)
             return
         try:
-            n = min(int(self.headers.get("Content-Length", 0)), 1_000_000)
+            n = min(int(self.headers.get("Content-Length", 0)), 65_536)
             raw = self.rfile.read(n) if n else b"{}"
             data = json.loads(raw or b"{}")
         except Exception:
@@ -709,6 +869,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "count": count})
             elif self.path == "/api/unbind":
                 removed = unbind_device()
+                self._json({"ok": True, "removed": removed})
+            elif self.path == "/api/reset":
+                removed = reset_config()
                 self._json({"ok": True, "removed": removed})
             elif self.path == "/api/launch-ccswitch":
                 ok, msg = launch_ccswitch()

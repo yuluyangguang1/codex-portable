@@ -1,4 +1,4 @@
-# USB drive binding for Claude Portable
+# USB drive binding for Codex Portable
 # Computes SHA256 hash of the volume's UniqueId (NTFS GUID).
 # Storing only the hash prevents attackers from learning the original fingerprint.
 #
@@ -44,7 +44,7 @@ function Get-Hash {
     param([string]$InputString)
     if (-not $InputString) { return $null }
     # Add a static salt so attackers can't easily compute the hash from a guessed fingerprint
-    $salted = "ClaudePortable-v1::" + $InputString
+    $salted = "CodexPortable-v1::" + $InputString
     $bytes = [Text.Encoding]::UTF8.GetBytes($salted)
     $sha = [Security.Cryptography.SHA256]::Create()
     try {

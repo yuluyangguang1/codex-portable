@@ -18,12 +18,35 @@ if [ "${1:-}" = "--unlock" ]; then
     exit 0
 fi
 
+# Resolve python3: bundled > system
+# Uses SCRIPT_DIR directly (BIN_DIR may not be set yet in --config path)
+resolve_python3() {
+    local _arch
+    _arch="$(uname -m)"
+    local _bin_dir="$SCRIPT_DIR/bin/linux-x64"
+    case "$_arch" in
+        arm64|aarch64) _bin_dir="$SCRIPT_DIR/bin/linux-arm64" ;;
+        *)             _bin_dir="$SCRIPT_DIR/bin/linux-x64" ;;
+    esac
+    # 1. Bundled python3 (inside portable package)
+    if [ -x "$_bin_dir/python3" ]; then
+        echo "$_bin_dir/python3"
+        return 0
+    fi
+    # 2. System python3
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+        return 0
+    fi
+    return 1
+}
+
 # 处理 --config 参数
 if [ "${1:-}" = "--config" ]; then
     CONFIG_SERVER="$SCRIPT_DIR/lib/config_server.py"
-    if command -v python3 &>/dev/null && [ -f "$CONFIG_SERVER" ]; then
+    if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
         echo "  打开配置中心 http://127.0.0.1:17590 ..."
-        exec python3 "$CONFIG_SERVER"
+        exec "$PY3" "$CONFIG_SERVER"
     elif [ -x "$SCRIPT_DIR/bin/linux-x64/cc-switch" ]; then
         exec "$SCRIPT_DIR/bin/linux-x64/cc-switch"
     else
@@ -39,7 +62,11 @@ echo ""
 # 架构检测（Linux 仅 x86_64）
 case "$ARCH" in
     x86_64|amd64) BIN_DIR="$SCRIPT_DIR/bin/linux-x64" ;;
-    aarch64|arm64) BIN_DIR="$SCRIPT_DIR/bin/linux-arm64" ;;
+    aarch64|arm64)
+        echo "[ERROR] 暂不支持 Linux ARM64 架构。"
+        echo "  请在 x86_64 Linux 上使用，或关注后续版本。"
+        exit 1
+        ;;
     *) echo "[ERROR] 不支持的架构: $ARCH"; exit 1 ;;
 esac
 
@@ -168,8 +195,8 @@ has_valid_config() {
     local size
     size=$(stat -c%s "$auth_file" 2>/dev/null || echo 0)
     [ "$size" -lt 20 ] && return 1
-    if command -v python3 &>/dev/null; then
-        AUTH_FILE="$auth_file" python3 - <<'PYEOF' 2>/dev/null
+    if PY3=$(resolve_python3); then
+        AUTH_FILE="$auth_file" "$PY3" - <<'PYEOF' 2>/dev/null
 import os, json, sys
 try:
     with open(os.environ['AUTH_FILE'], 'r') as f:
@@ -196,10 +223,10 @@ if ! has_valid_config; then
     echo "═══════════════════════════════════════════"
     echo ""
     CONFIG_SERVER="$LIB_DIR/config_server.py"
-    if command -v python3 &>/dev/null && [ -f "$CONFIG_SERVER" ]; then
+    if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
         echo "  正在打开配置中心 http://127.0.0.1:17590 ..."
         echo ""
-        python3 "$CONFIG_SERVER" >/dev/null 2>&1 &
+        "$PY3" "$CONFIG_SERVER" >/dev/null 2>&1 &
         CC_SWITCH_PID=$!
         WE_STARTED_CCS=1
     elif [ -f "$BIN_DIR/cc-switch" ]; then

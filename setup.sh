@@ -72,12 +72,13 @@ if [ "$ALL" = "1" ]; then
     download bin/macos-x64    codex-x86_64-apple-darwin.tar.gz        0
     download bin/linux-x64    codex-x86_64-unknown-linux-musl.tar.gz  0
     download bin/windows-x64  codex-x86_64-pc-windows-msvc.exe.tar.gz 1
+    echo "  [info] Linux ARM64 暂不支持，已跳过。"
 else
     case "$OS-$ARCH" in
         Darwin-arm64)   download bin/macos-arm64 codex-aarch64-apple-darwin.tar.gz       0 ;;
         Darwin-x86_64)  download bin/macos-x64   codex-x86_64-apple-darwin.tar.gz        0 ;;
         Linux-x86_64)   download bin/linux-x64   codex-x86_64-unknown-linux-musl.tar.gz  0 ;;
-        Linux-aarch64)  download bin/linux-arm64 codex-aarch64-unknown-linux-musl.tar.gz 0 ;;
+        Linux-aarch64)  echo "  [!] 暂不支持 Linux ARM64 架构。"; exit 1 ;;
         *) echo "  [!] Unsupported platform: $OS-$ARCH"; exit 1 ;;
     esac
 fi

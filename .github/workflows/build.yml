@@ -102,11 +102,73 @@ jobs:
 
           ls -lh bin/*/cc-switch* | awk '{print $5, $NF}'
 
+      - name: Download Python embeddable (Windows only)
+        run: |
+          set -e
+          # Python 3.12 embeddable for Windows x64 (~10MB, no install needed)
+          PYTHON_VER="3.12.10"
+          curl -fsSL -o /tmp/python-embed.zip "https://www.python.org/ftp/python/${PYTHON_VER}/python-${PYTHON_VER}-embed-amd64.zip"
+          mkdir -p bin/windows-x64/python
+          unzip -q /tmp/python-embed.zip -d bin/windows-x64/python
+
+          # Enable pip/site by uncommenting import site in python312._pth
+          sed -i 's/^#import site/import site/' bin/windows-x64/python/python312._pth 2>/dev/null || true
+
+          # Install pip (required for config_server.py dependencies)
+          curl -fsSL -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py
+          bin/windows-x64/python/python.exe /tmp/get-pip.py --no-warn-script-location 2>/dev/null || true
+
+          # Install minimal deps for config_server.py (flask, requests)
+          bin/windows-x64/python/python.exe -m pip install flask requests --no-warn-script-location 2>/dev/null || true
+
+          ls -lh bin/windows-x64/python/python.exe
+
+      - name: Download Python standalone (macOS + Linux)
+        run: |
+          set -e
+          # python-build-standalone by indygreg — fully self-contained, no system deps
+          PBS_TAG="20250409"
+          PBS_BASE="https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_TAG}"
+
+          # macOS arm64
+          curl -fsSL "${PBS_BASE}/cpython-3.12.10-aarch64-apple-darwin-install_only_stripped.tar.gz" | tar -xz -C bin/macos-arm64
+          mv bin/macos-arm64/python bin/macos-arm64/python3-bin 2>/dev/null || true
+          # Create a wrapper so scripts can call python3
+          cat > bin/macos-arm64/python3 <<'WRAP'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          exec "$DIR/python3-bin/bin/python3" "$@"
+          WRAP
+          chmod +x bin/macos-arm64/python3
+
+          # macOS x64
+          curl -fsSL "${PBS_BASE}/cpython-3.12.10-x86_64-apple-darwin-install_only_stripped.tar.gz" | tar -xz -C bin/macos-x64
+          mv bin/macos-x64/python bin/macos-x64/python3-bin 2>/dev/null || true
+          cat > bin/macos-x64/python3 <<'WRAP'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          exec "$DIR/python3-bin/bin/python3" "$@"
+          WRAP
+          chmod +x bin/macos-x64/python3
+
+          # Linux x64
+          curl -fsSL "${PBS_BASE}/cpython-3.12.10-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz" | tar -xz -C bin/linux-x64
+          mv bin/linux-x64/python bin/linux-x64/python3-bin 2>/dev/null || true
+          cat > bin/linux-x64/python3 <<'WRAP'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          exec "$DIR/python3-bin/bin/python3" "$@"
+          WRAP
+          chmod +x bin/linux-x64/python3
+
+          ls -lh bin/macos-arm64/python3 bin/macos-x64/python3 bin/linux-x64/python3
+
       - name: Set version
         id: ver
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "${GITHUB_REF#refs/tags/}" > VERSION
           else
             echo "version=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
           fi
@@ -123,6 +185,8 @@ jobs:
           rm -rf dist/CodexPortable-macos-arm64/bin
           mkdir -p dist/CodexPortable-macos-arm64/bin/macos-arm64
           cp bin/macos-arm64/codex bin/macos-arm64/cc-switch dist/CodexPortable-macos-arm64/bin/macos-arm64/
+          cp bin/macos-arm64/python3 dist/CodexPortable-macos-arm64/bin/macos-arm64/ 2>/dev/null || true
+          cp -r bin/macos-arm64/python3-bin dist/CodexPortable-macos-arm64/bin/macos-arm64/ 2>/dev/null || true
           chmod +x dist/CodexPortable-macos-arm64/bin/macos-arm64/codex dist/CodexPortable-macos-arm64/bin/macos-arm64/cc-switch
 
           # macOS x64
@@ -131,6 +195,8 @@ jobs:
           rm -rf dist/CodexPortable-macos-x64/bin
           mkdir -p dist/CodexPortable-macos-x64/bin/macos-x64
           cp bin/macos-x64/codex bin/macos-x64/cc-switch dist/CodexPortable-macos-x64/bin/macos-x64/
+          cp bin/macos-x64/python3 dist/CodexPortable-macos-x64/bin/macos-x64/ 2>/dev/null || true
+          cp -r bin/macos-x64/python3-bin dist/CodexPortable-macos-x64/bin/macos-x64/ 2>/dev/null || true
           chmod +x dist/CodexPortable-macos-x64/bin/macos-x64/codex dist/CodexPortable-macos-x64/bin/macos-x64/cc-switch
 
           # Linux x64
@@ -139,6 +205,8 @@ jobs:
           rm -rf dist/CodexPortable-linux-x64/bin
           mkdir -p dist/CodexPortable-linux-x64/bin/linux-x64
           cp bin/linux-x64/codex bin/linux-x64/cc-switch dist/CodexPortable-linux-x64/bin/linux-x64/
+          cp bin/linux-x64/python3 dist/CodexPortable-linux-x64/bin/linux-x64/ 2>/dev/null || true
+          cp -r bin/linux-x64/python3-bin dist/CodexPortable-linux-x64/bin/linux-x64/ 2>/dev/null || true
           chmod +x dist/CodexPortable-linux-x64/bin/linux-x64/codex dist/CodexPortable-linux-x64/bin/linux-x64/cc-switch
 
           # Windows x64
@@ -147,6 +215,7 @@ jobs:
           rm -rf dist/CodexPortable-windows-x64/bin
           mkdir -p dist/CodexPortable-windows-x64/bin/windows-x64
           cp bin/windows-x64/codex.exe bin/windows-x64/cc-switch.exe dist/CodexPortable-windows-x64/bin/windows-x64/
+          cp -r bin/windows-x64/python dist/CodexPortable-windows-x64/bin/windows-x64/ 2>/dev/null || true
 
           # All-platforms package (all 4 platform binaries in one zip)
           mkdir -p dist/CodexPortable-all-platforms/bin/{macos-arm64,macos-x64,linux-x64,windows-x64}
@@ -154,8 +223,11 @@ jobs:
           for plat in macos-arm64 macos-x64 linux-x64; do
             cp bin/$plat/codex bin/$plat/cc-switch dist/CodexPortable-all-platforms/bin/$plat/
             chmod +x dist/CodexPortable-all-platforms/bin/$plat/codex dist/CodexPortable-all-platforms/bin/$plat/cc-switch
+            cp bin/$plat/python3 dist/CodexPortable-all-platforms/bin/$plat/ 2>/dev/null || true
+            cp -r bin/$plat/python3-bin dist/CodexPortable-all-platforms/bin/$plat/ 2>/dev/null || true
           done
           cp bin/windows-x64/codex.exe bin/windows-x64/cc-switch.exe dist/CodexPortable-all-platforms/bin/windows-x64/
+          cp -r bin/windows-x64/python dist/CodexPortable-all-platforms/bin/windows-x64/ 2>/dev/null || true
 
           # Zip them
           cd dist

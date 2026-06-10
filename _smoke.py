@@ -67,14 +67,16 @@ def post(path,body,t=True):
     req=urllib.request.Request(f'http://127.0.0.1:17593{path}',data=json.dumps(body).encode(),method='POST',headers=h)
     try:
         r=urllib.request.urlopen(req); return json.loads(r.read()),r.status
-    except urllib.error.HTTPError as e: return json.loads(e.read()),e.code
+    except urllib.error.HTTPError as e:
+        try: return json.loads(e.read()),e.code
+        except Exception: return {'error':e.reason},e.code
 
 lc,code=post('/api/launch-ccswitch',{})
 check("launch-ccswitch endpoint", 'ok' in lc and 'message' in lc)
 _,c=post('/api/save',{'name':'x','base_url':'https://x.com','api_key':'k'*8,'model':''},t=False)
 check("CSRF blocks no-token", c==403)
 st=json.loads(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:17593/api/state',headers=H)).read())
-check("providers >= 11", len(st['providers_catalog'])>=11, str(len(st['providers_catalog'])))
+check("providers >= 18", len(st['providers_catalog'])>=18, str(len(st['providers_catalog'])))
 
 srv.shutdown()
 shutil.rmtree(tmp, ignore_errors=True)

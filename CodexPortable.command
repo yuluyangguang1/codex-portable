@@ -23,12 +23,32 @@ if [ "${1:-}" = "--unlock" ]; then
     exit 0
 fi
 
+# Resolve python3: bundled > system
+# Uses SCRIPT_DIR directly (BIN_DIR may not be set yet in --config path)
+resolve_python3() {
+    local _arch
+    _arch="$(uname -m)"
+    local _bin_dir="$SCRIPT_DIR/bin/macos-x64"
+    [ "$_arch" = "arm64" ] && _bin_dir="$SCRIPT_DIR/bin/macos-arm64"
+    # 1. Bundled python3 (inside portable package)
+    if [ -x "$_bin_dir/python3" ]; then
+        echo "$_bin_dir/python3"
+        return 0
+    fi
+    # 2. System python3
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+        return 0
+    fi
+    return 1
+}
+
 # 处理 --config 参数（随时打开配置中心）
 if [ "${1:-}" = "--config" ]; then
     CONFIG_SERVER="$SCRIPT_DIR/lib/config_server.py"
-    if command -v python3 &>/dev/null && [ -f "$CONFIG_SERVER" ]; then
+    if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
         echo "  打开配置中心 http://127.0.0.1:17590 ..."
-        exec python3 "$CONFIG_SERVER"
+        exec "$PY3" "$CONFIG_SERVER"
     elif [ -x "$SCRIPT_DIR/bin/macos-arm64/cc-switch" ] || [ -x "$SCRIPT_DIR/bin/macos-x64/cc-switch" ]; then
         ARCH_CC="$(uname -m)"; CCBIN="$SCRIPT_DIR/bin/macos-x64/cc-switch"
         [ "$ARCH_CC" = "arm64" ] && CCBIN="$SCRIPT_DIR/bin/macos-arm64/cc-switch"
@@ -229,8 +249,8 @@ has_valid_config() {
     size=$(stat -f%z "$auth_file" 2>/dev/null || stat -c%s "$auth_file" 2>/dev/null || echo 0)
     [ "$size" -lt 20 ] && return 1
     # 用 python3 精确校验
-    if command -v python3 &>/dev/null; then
-        AUTH_FILE="$auth_file" python3 - <<'PYEOF' 2>/dev/null
+    if PY3=$(resolve_python3); then
+        AUTH_FILE="$auth_file" "$PY3" - <<'PYEOF' 2>/dev/null
 import os, json, sys
 try:
     with open(os.environ['AUTH_FILE'], 'r') as f:
@@ -263,11 +283,11 @@ if ! has_valid_config; then
     echo "═══════════════════════════════════════════"
     echo ""
     CONFIG_SERVER="$LIB_DIR/config_server.py"
-    if command -v python3 &>/dev/null && [ -f "$CONFIG_SERVER" ]; then
+    if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
         echo "  正在打开配置中心 http://127.0.0.1:17590 ..."
         echo "  按引导选供应商、填 Key、测试、保存即可。"
         echo ""
-        python3 "$CONFIG_SERVER" >/dev/null 2>&1 &
+        "$PY3" "$CONFIG_SERVER" >/dev/null 2>&1 &
         CC_SWITCH_PID=$!
         WE_STARTED_CCS=1
     elif [ -f "$BIN_DIR/cc-switch" ]; then

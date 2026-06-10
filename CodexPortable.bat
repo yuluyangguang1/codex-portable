@@ -10,16 +10,11 @@ set "OPENAI_BASE_URL="
 REM Enable ANSI escape codes
 for /F %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
 
-echo.
-echo %ESC%[38;5;45m   ██████╗ ██████╗ ██████╗ ███████╗██╗  ██╗%ESC%[0m
-echo %ESC%[38;5;45m  ██╔════╝██╔═══██╗██╔══██╗██╔════╝╚██╗██╔╝%ESC%[0m
-echo %ESC%[38;5;33m  ██║     ██║   ██║██║  ██║█████╗   ╚███╔╝%ESC%[0m
-echo %ESC%[38;5;33m  ██║     ██║   ██║██║  ██║██╔══╝   ██╔██╗%ESC%[0m
-echo %ESC%[38;5;240m  ╚██████╗╚██████╔╝██████╔╝███████╗██╔╝ ██╗%ESC%[0m
-echo %ESC%[38;5;240m   ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝%ESC%[0m
-echo.
-echo      Codex CLI Portable
-echo.
+echo(
+echo %ESC%[38;5;45m  ============================================%ESC%[0m
+echo %ESC%[38;5;33m     C O D E X   C L I   P O R T A B L E%ESC%[0m
+echo %ESC%[38;5;45m  ============================================%ESC%[0m
+echo(
 
 set "SCRIPT_DIR=%~dp0"
 set "BIN_DIR=%SCRIPT_DIR%bin\windows-x64"
@@ -31,8 +26,8 @@ set "LOCK_FILE=%PORTABLE_DATA%\.lock"
 set "LOCK_FILE2=%PORTABLE_CCS%\.bind"
 set "RUN_LOCK=%PORTABLE_DATA%\.running"
 
-set "SCRIPT_DIR_PS=%SCRIPT_DIR%"
-if "%SCRIPT_DIR_PS:~-1%"=="\" set "SCRIPT_DIR_PS=%SCRIPT_DIR_PS:~0,-1%"
+REM Remove trailing backslash from SCRIPT_DIR for PS scripts
+set "SCRIPT_DIR_PS=%SCRIPT_DIR:~0,-1%"
 
 set "SYS_CCS=%USERPROFILE%\.cc-switch"
 set "SYS_CODEX=%USERPROFILE%\.codex"
@@ -66,7 +61,7 @@ if exist "%RUN_LOCK%" (
   if defined PREV_PID (
     tasklist /fi "PID eq !PREV_PID!" 2>nul | find "!PREV_PID!" >nul
     if !errorlevel! EQU 0 (
-      echo   [info] Another instance is already running (PID !PREV_PID!).
+      echo   [info] Another instance is already running ^(PID !PREV_PID!^).
       timeout /t 5 >nul 2>&1
       exit /b 1
     )
@@ -75,12 +70,12 @@ if exist "%RUN_LOCK%" (
 )
 mkdir "%RUN_LOCK%" 2>nul
 if !errorlevel! NEQ 0 (
-  echo   [info] Another instance is already running (concurrent start).
+  echo   [info] Another instance is already running ^(concurrent start^).
   timeout /t 5 >nul 2>&1
   exit /b 1
 )
 
-:: Drive binding check (validate BOTH locks; any mismatch denies)
+:: Drive binding check
 set "LOCK_PRESENT=0"
 if exist "%LOCK_FILE%" set "LOCK_PRESENT=1"
 if exist "%LOCK_FILE2%" set "LOCK_PRESENT=1"
@@ -89,7 +84,7 @@ if not exist "%LIB_DIR%\binding.ps1" goto :binding_done
 
 set "BIND_FAILED=0"
 set "BIND_WARNED=0"
-for %%L in ("%LOCK_FILE%" "%LOCK_FILE2%") do (
+for %%L in ("%LOCK_FILE%","%LOCK_FILE2%") do (
   if exist "%%~L" (
     powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB_DIR%\binding.ps1" check "%SCRIPT_DIR_PS%" "%%~L" >nul 2>&1
     set "EC=!errorlevel!"
@@ -102,14 +97,10 @@ if "!BIND_WARNED!"=="1" echo   [warn] Could not verify drive binding (continuing
 goto :binding_done
 
 :binding_failed
-echo.
-echo   ============================================================
+echo(
 echo   [ERROR] This portable is locked to its original USB drive.
-echo   ============================================================
-echo.
-echo   Original owner can unbind with:
-echo     CodexPortable.bat --unlock
-echo.
+echo   Original owner can unbind with: CodexPortable.bat --unlock
+echo(
 pause
 exit /b 1
 
@@ -129,11 +120,6 @@ if !errorlevel! EQU 0 (
 if not exist "%PORTABLE_CCS%" mkdir "%PORTABLE_CCS%"
 if not exist "%PORTABLE_CODEX%" mkdir "%PORTABLE_CODEX%"
 
-:: ensure_link handles migration in a single pass (copies when portable
-:: empty, backs up otherwise). The previous standalone xcopy left both
-:: system + portable populated, forcing ensure_link into a destructive
-:: branch. Removed.
-
 :: Create junctions
 call :ensure_link "%SYS_CCS%" "%PORTABLE_CCS%"
 if !errorlevel! NEQ 0 (
@@ -149,32 +135,77 @@ if !errorlevel! NEQ 0 (
   exit /b 1
 )
 
-:: Write run-lock (cmd's PID via PowerShell parent lookup; wmic was
-:: removed in Win11 24H2+, and %~1 is the first CLI arg not the PID)
-for /f "delims=" %%P in ('powershell -NoProfile -Command "(Get-CimInstance Win32_Process -Filter ('ProcessId = ' + $PID)).ParentProcessId" 2^>nul') do set "MY_PID=%%P"
+:: Write run-lock
+for /f "delims=" %%P in ('powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter ProcessId=$PID ^| Select-Object -ExpandProperty ParentProcessId" 2^>nul') do set "MY_PID=%%P"
 if not defined MY_PID set "MY_PID=%RANDOM%%RANDOM%"
 echo !MY_PID! > "%RUN_LOCK%\pid"
 
-:: Check config
-call :check_config
-if "!HAS_CONFIG!"=="1" goto :launch_codex
+:: Always start config center (foreground popup)
+set "CONFIG_SERVER=%LIB_DIR%\config_server.py"
+set "WE_STARTED_CCS=0"
 
-:: First-run: open CC Switch and wait
-echo.
+REM Check for real Python (not Windows Store stubs)
+REM Priority: system python3 > system python > bundled python embed
+set "PYTHON_CMD="
+where python3 >nul 2>&1
+if !errorlevel! EQU 0 (
+  python3 --version >nul 2>&1
+  if !errorlevel! EQU 0 set "PYTHON_CMD=python3"
+)
+if not defined PYTHON_CMD (
+  where python >nul 2>&1
+  if !errorlevel! EQU 0 (
+    python --version >nul 2>&1
+    if !errorlevel! EQU 0 set "PYTHON_CMD=python"
+  )
+)
+if not defined PYTHON_CMD (
+  if exist "%BIN_DIR%\python\python.exe" (
+    "%BIN_DIR%\python\python.exe" --version >nul 2>&1
+    if !errorlevel! EQU 0 set "PYTHON_CMD=%BIN_DIR%\python\python.exe"
+  )
+)
+
+:: Check config first
+call :check_config
+if "!HAS_CONFIG!"=="1" (
+  echo   [ok] Configuration loaded.
+  echo   Starting config center in background for key changes...
+  echo(
+  REM Start config center in background (non-blocking) if already configured
+  if defined PYTHON_CMD if exist "%CONFIG_SERVER%" (
+    start "" "!PYTHON_CMD!" "%CONFIG_SERVER%"
+    set "WE_STARTED_CCS=1"
+  ) else if exist "%BIN_DIR%\cc-switch.exe" (
+    start "" "%BIN_DIR%\cc-switch.exe"
+    set "WE_STARTED_CCS=1"
+  )
+  goto :launch_codex
+)
+
+:: First-run: start config center in foreground and wait
+echo(
 echo =====================================
 echo   First Run - Configure API
 echo =====================================
-echo.
-if exist "%BIN_DIR%\cc-switch.exe" (
+echo(
+if defined PYTHON_CMD if exist "%CONFIG_SERVER%" (
+  echo   Opening config center http://127.0.0.1:17590 ...
+  echo   Follow the guide to select provider, fill key, test, and save.
+  echo(
+  start "" "!PYTHON_CMD!" "%CONFIG_SERVER%"
+  set "WE_STARTED_CCS=1"
+) else if exist "%BIN_DIR%\cc-switch.exe" (
   echo   Opening CC Switch GUI...
   echo   Add a Codex provider and save.
-  echo.
+  echo(
   start "" "%BIN_DIR%\cc-switch.exe"
   set "WE_STARTED_CCS=1"
 ) else (
-  echo   [warn] cc-switch GUI not found. Configure manually:
+  echo   [warn] No python or cc-switch GUI found. Configure manually:
   echo     %PORTABLE_CODEX%\auth.json    -^> {"OPENAI_API_KEY": "..."}
   echo     %PORTABLE_CODEX%\config.toml  -^> [model_providers.xxx] ...
+  goto :error_cleanup
 )
 
 echo   Waiting for configuration...
@@ -184,12 +215,17 @@ timeout /t 2 >nul 2>&1
 set /a WAIT_COUNT+=1
 call :check_config
 if "!HAS_CONFIG!"=="1" goto :config_ready
-if "!WE_STARTED_CCS!"=="1" (
-  tasklist /fi "ImageName eq cc-switch.exe" 2>nul | find /i "cc-switch.exe" >nul
-  if !errorlevel! NEQ 0 (
-    echo   [!] CC Switch exited before config saved. Re-run to retry.
-    goto :error_cleanup
-  )
+REM Check if config center is still running
+set "CCS_ALIVE=0"
+tasklist /fi "ImageName eq python.exe" 2>nul | find /i "python.exe" >nul
+if !errorlevel! EQU 0 set "CCS_ALIVE=1"
+tasklist /fi "ImageName eq python3.exe" 2>nul | find /i "python3.exe" >nul
+if !errorlevel! EQU 0 set "CCS_ALIVE=1"
+tasklist /fi "ImageName eq cc-switch.exe" 2>nul | find /i "cc-switch.exe" >nul
+if !errorlevel! EQU 0 set "CCS_ALIVE=1"
+if "!CCS_ALIVE!"=="0" (
+  echo   [!] Config center exited before config saved. Re-run to retry.
+  goto :error_cleanup
 )
 if !WAIT_COUNT! GEQ 150 (
   echo   [!] Timeout waiting for configuration.
@@ -214,7 +250,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB_DIR%\binding.ps1" crea
 
 :: Set CODEX_HOME and launch
 echo   Mode: Direct ^| Data: portable folder
-echo.
+echo(
 set "CODEX_HOME=%PORTABLE_CODEX%"
 "%BIN_DIR%\codex.exe" %*
 goto :final_cleanup
@@ -230,8 +266,13 @@ exit /b 0
 
 :do_cleanup
 if "!WE_STARTED_CCS!"=="1" (
+  REM Kill config center processes (python or cc-switch)
+  taskkill /im python.exe /t >nul 2>&1
+  taskkill /im python3.exe /t >nul 2>&1
   taskkill /im cc-switch.exe /t >nul 2>&1
   timeout /t 2 >nul 2>&1
+  taskkill /f /im python.exe /t >nul 2>&1
+  taskkill /f /im python3.exe /t >nul 2>&1
   taskkill /f /im cc-switch.exe /t >nul 2>&1
 )
 call :remove_link "%SYS_CCS%"
@@ -261,9 +302,7 @@ if not exist "%LINK%" (
 )
 fsutil reparsepoint query "%LINK%" >nul 2>&1
 if !errorlevel! EQU 0 exit /b 0
-REM Real directory (pre-existing system install). NEVER rd /s /q it
-REM blindly — migrate into portable first, or back it up. Destroying
-REM the user's real ~/.codex or ~/.cc-switch is unacceptable.
+REM Real directory (pre-existing system install)
 if exist "%LINK%\*" (
   set "TARGET_EMPTY=1"
   for /f %%X in ('dir /b /a "%TARGET%" 2^>nul ^| findstr /r ".*"') do set "TARGET_EMPTY=0"
@@ -273,11 +312,10 @@ if exist "%LINK%\*" (
     if !errorlevel! EQU 0 (
       rd /s /q "%LINK%" 2>nul
     ) else (
-      echo   [ERROR] xcopy failed (code !errorlevel!^), keeping %LINK% intact
+      echo   [ERROR] xcopy failed, keeping %LINK% intact
       exit /b 1
     )
   ) else (
-    REM Portable target not empty — back up system dir, don't merge/delete
     for /f "delims=" %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMddHHmmss" 2^>nul') do set "TS=%%T"
     if not defined TS set "TS=%RANDOM%%RANDOM%"
     echo   [warn] Portable target not empty, backing up system dir...

@@ -141,9 +141,11 @@ for /f "delims=" %%P in ('powershell -NoProfile -Command "$p1=$PID;$p2=(Get-CimI
 if not defined MY_PID set "MY_PID=%RANDOM%%RANDOM%%RANDOM%"
 (echo !MY_PID!)>"%RUN_LOCK%\pid"
 
-:: Kill orphaned config server from previous Ctrl+C (Bug #7 fix)
-for /f "tokens=5" %%P in ('netstat -ano 2^>nul ^| findstr ":17590 " ^| findstr "LISTEN"') do (
-  taskkill /pid %%P /f >nul 2>&1
+:: Kill orphaned config server from previous Ctrl+C (ports 17590-17599)
+for /L %%Q in (17590,1,17599) do (
+  for /f "tokens=5" %%P in ('netstat -ano 2^>nul ^| findstr ":%%Q " ^| findstr "LISTEN"') do (
+    taskkill /pid %%P /f >nul 2>&1
+  )
 )
 
 :: Always start config center (foreground popup)

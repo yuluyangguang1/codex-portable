@@ -483,7 +483,7 @@ async function mSave(){
   const pl=mPayload();
   if(!pl.api_key){toast('请填写 API Key','err');return}
   if(!pl.base_url){toast('请填写 Base URL','err');return}
-  const btns=document.querySelectorAll('#m-panel button');
+  const btns=document.querySelectorAll('.panel[data-panel="model"] button');
   btns.forEach(b=>b.disabled=true);
   try{
     const r=await api('/api/save','POST',pl);
@@ -560,6 +560,7 @@ async function load(){
   }catch(e){
     document.getElementById('sdot').className='dot off';
     document.getElementById('stext').textContent='无法连接后端';
+    const obBtn=document.getElementById('ob-savebtn');if(obBtn)obBtn.disabled=false;
   }
 }
 load();

@@ -377,6 +377,18 @@ def _atomic_write(path, content):
     p = Path(path)
     was_first_write = not p.exists()
 
+    # Cleanup stale uuid tmp files (>1 hour old) from prior crashes
+    try:
+        import time as _time
+        for stale in p.parent.glob(p.stem + ".*.tmp"):
+            try:
+                if stale.stat().st_mtime < _time.time() - 3600:
+                    stale.unlink(missing_ok=True)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
     # Rolling backup: copy current file before overwriting
     if p.exists() and p.stat().st_size > 0:
         try:
@@ -944,7 +956,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         # Layer 3: require JSON Content-Type on writes (defense-in-depth)
         ct = (self.headers.get("Content-Type", "")).split(";")[0].strip().lower()
-        if ct and ct != "application/json":
+        if ct != "application/json":
             self._json({"ok": False, "error": "Unsupported Media Type"}, 415)
             return
         try:

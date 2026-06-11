@@ -171,8 +171,7 @@ if not defined PYTHON_CMD (
 )
 if not defined PYTHON_CMD (
   if exist "!BIN_DIR!\python\python.exe" (
-    "!BIN_DIR!\python\python.exe" --version >nul 2>&1
-    if !errorlevel! EQU 0 set "PYTHON_CMD=!BIN_DIR!\python\python.exe"
+    set "PYTHON_CMD=!BIN_DIR!\python\python.exe"
   )
 )
 

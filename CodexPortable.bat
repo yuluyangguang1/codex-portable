@@ -170,9 +170,9 @@ if not defined PYTHON_CMD (
   )
 )
 if not defined PYTHON_CMD (
-  if exist "%BIN_DIR%\python\python.exe" (
-    "%BIN_DIR%\python\python.exe" --version >nul 2>&1
-    if !errorlevel! EQU 0 set "PYTHON_CMD=%BIN_DIR%\python\python.exe"
+  if exist "!BIN_DIR!\python\python.exe" (
+    "!BIN_DIR!\python\python.exe" --version >nul 2>&1
+    if !errorlevel! EQU 0 set "PYTHON_CMD=!BIN_DIR!\python\python.exe"
   )
 )
 
@@ -185,7 +185,7 @@ if "!HAS_CONFIG!"=="1" (
   REM Start config center in background (non-blocking)
   if defined PYTHON_CMD (
     if exist "%CONFIG_SERVER%" (
-      start "" cmd /c "!PYTHON_CMD!" "%CONFIG_SERVER%"
+      start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
       set "WE_STARTED_CCS=1"
       REM Capture PID of the python process (approximate — find newest python.exe)
       timeout /t 1 >nul 2>&1
@@ -207,18 +207,25 @@ if defined PYTHON_CMD (
     echo   Follow the guide to select provider, fill key, test, and save.
     echo   (CC Switch GUI is also available via the config center UI)
     echo(
-    start "" cmd /c "!PYTHON_CMD!" "%CONFIG_SERVER%"
+    start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
     set "WE_STARTED_CCS=1"
     timeout /t 1 >nul 2>&1
     for /f "tokens=2" %%P in ('wmic process where "CommandLine like '%%config_server%%'" get ProcessId /value 2^>nul ^| findstr "ProcessId"') do set "CONFIG_PID=%%P"
   ) else (
-    echo   [!] Config server script not found: %CONFIG_SERVER%
+    echo   [!] Config server script not found: !CONFIG_SERVER!
     goto :error_cleanup
   )
 ) else (
   echo   [!] No Python found. Config center cannot start.
-  echo   Please install Python or use another machine to configure.
-  goto :error_cleanup
+  echo.
+  echo   You can still use Codex if you manually configure:
+  echo     1. Install Python from python.org, or
+  echo     2. Create data\.codex\auth.json with your API key:
+  echo        {"OPENAI_API_KEY": "sk-..."}
+  echo.
+  echo   Press any key to continue with current config...
+  pause >nul
+  goto :launch_codex
 )
 
 echo   Waiting for configuration...

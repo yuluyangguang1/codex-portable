@@ -83,7 +83,11 @@ preflight_check() {
     # 6. Binary actually runs (--version smoke test)
     if [ -f "$bin_file" ] && [ -x "$bin_file" ]; then
         local BIN_VER
-        BIN_VER=$(timeout 5 "$bin_file" --version 2>&1 || true)
+        if command -v timeout &>/dev/null; then
+            BIN_VER=$(timeout 5 "$bin_file" --version 2>&1 || true)
+        else
+            BIN_VER=$("$bin_file" --version 2>&1 || true)
+        fi
         if [ -z "$BIN_VER" ]; then
             echo "  [WARN]  Binary found but won't run: $bin_file"
             echo "          USB files may be corrupted"

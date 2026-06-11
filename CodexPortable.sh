@@ -127,9 +127,9 @@ if [ "$LOCK_PRESENT" = "1" ] && [ -f "$LIB_DIR/binding.sh" ]; then
     for active_lock in "$LOCK_FILE" "$LOCK_FILE2"; do
         [ -f "$active_lock" ] || continue
         bash "$LIB_DIR/binding.sh" check "$SCRIPT_DIR" "$active_lock"
-        local EC=$?
-        [ "$EC" -eq 1 ] && { bind_failed=1; break; }
-        [ "$EC" -eq 3 ] && bind_warned=1
+        r=$?
+        [ "$r" -eq 1 ] && { bind_failed=1; break; }
+        [ "$r" -eq 3 ] && bind_warned=1
     done
     if [ "$bind_failed" = "1" ]; then
         echo ""

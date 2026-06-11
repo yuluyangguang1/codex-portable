@@ -972,9 +972,29 @@ class Handler(BaseHTTPRequestHandler):
                               data.get("api_key", ""), data.get("model", ""))
                 self._json({"ok": True})
             elif self.path == "/api/test":
-                ok, msg = test_key(data.get("base_url", ""),
-                                   data.get("api_key", ""), data.get("model", ""))
-                self._json({"ok": ok, "message": msg})
+                # SSRF protection: validate URL before testing
+                import urllib.parse
+                _url = data.get("base_url", "")
+                _parsed = urllib.parse.urlparse(_url)
+                _ok = True
+                if _parsed.scheme not in ("https", "http"):
+                    _ok = False
+                else:
+                    _host = (_parsed.hostname or "").lower()
+                    _blocked = ("127.", "0.", "localhost", "169.254.", "10.",
+                                "172.16.", "172.17.", "172.18.", "172.19.",
+                                "172.20.", "172.21.", "172.22.", "172.23.",
+                                "172.24.", "172.25.", "172.26.", "172.27.",
+                                "172.28.", "172.29.", "172.30.", "172.31.",
+                                "192.168.", "0.0.0.0", "[::1]", "100.64.")
+                    for b in _blocked:
+                        if _host.startswith(b) or _host == b.rstrip("."):
+                            _ok = False; break
+                if not _ok:
+                    self._json({"ok": False, "error": "URL not allowed (only public http/https)"}, 400)
+                else:
+                    ok, msg = test_key(_url, data.get("api_key", ""), data.get("model", ""))
+                    self._json({"ok": ok, "message": msg})
             elif self.path == "/api/activate":
                 activate_provider(data.get("id", ""))
                 self._json({"ok": True})

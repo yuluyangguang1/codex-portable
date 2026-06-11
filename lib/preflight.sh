@@ -114,7 +114,7 @@ preflight_check() {
     local AUTH_FILE="$data_dir/.codex/auth.json"
     if [ -f "$AUTH_FILE" ]; then
         if command -v python3 &>/dev/null; then
-            if ! python3 -c "import json; json.load(open('$AUTH_FILE'))" 2>/dev/null; then
+            if ! python3 -c "import json, sys; json.load(open(sys.argv[1]))" "$AUTH_FILE" 2>/dev/null; then
                 echo "  [WARN]  auth.json parse failed: $AUTH_FILE"
                 echo "          Config center will auto-recover from backups"
                 warnings=$((warnings + 1))

@@ -305,6 +305,7 @@ const TAGS=[
 let STATE=null,obSel=null,mSel=null,obTag='all',mTag='all';
 
 /* ── Utils ── */
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(msg,kind){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(kind||'');setTimeout(()=>t.className='toast',2600)}
 async function api(path,method,body){const tok=(document.querySelector('meta[name="cc-token"]')||{}).content||'';const opt={method:method||'GET',headers:{'Content-Type':'application/json','X-CC-Token':tok}};if(body)opt.body=JSON.stringify(body);const r=await fetch(path,opt);return r.json()}
 
@@ -344,7 +345,7 @@ function renderGrid(gridId,providers,selId,onSelect){
   providers.forEach(p=>{
     const d=document.createElement('div');
     d.className='pcard'+(selId===p.id?' sel':'');
-    d.innerHTML='<div class="picon">'+providerIcon(p.id)+'</div><div class="pinfo"><div class="pn">'+p.name+'</div><div class="pnote">'+p.note+'</div>'+(p.tags&&p.tags.length?'<div class="ptags">'+p.tags.map(t=>'<span class="ptag">'+t+'</span>').join('')+'</div>':'')+'</div>';
+    d.innerHTML='<div class="picon">'+providerIcon(p.id)+'</div><div class="pinfo"><div class="pn">'+esc(p.name)+'</div><div class="pnote">'+esc(p.note)+'</div>'+(p.tags&&p.tags.length?'<div class="ptags">'+p.tags.map(t=>'<span class="ptag">'+t+'</span>').join('')+'</div>':'')+'</div>';
     d.onclick=()=>onSelect(p.id);
     g.appendChild(d);
   });
@@ -410,10 +411,10 @@ function obNext(n){
     if(!pl.base_url){toast('请填写 Base URL','err');return}
     /* show summary */
     document.getElementById('ob-summary').innerHTML=
-      '<strong>'+pl.name+'</strong><br>'+
-      (pl.model?'模型: '+pl.model:'模型: 默认')+'<br>'+
-      'Base URL: '+pl.base_url+'<br>'+
-      'API Key: '+pl.api_key.slice(0,6)+'…'+pl.api_key.slice(-4);
+      '<strong>'+esc(pl.name)+'</strong><br>'+
+      (pl.model?'模型: '+esc(pl.model):'模型: 默认')+'<br>'+
+      'Base URL: '+esc(pl.base_url)+'<br>'+
+      'API Key: '+esc(pl.api_key.slice(0,6)+'…'+pl.api_key.slice(-4));
   }
   obStep(n);
 }
@@ -496,7 +497,7 @@ function renderSavedList(){
   const sl=document.getElementById('saved-list');sl.innerHTML='';
   (STATE.saved||[]).forEach(s=>{
     const d=document.createElement('div');d.className='saved-item';
-    d.innerHTML='<span>'+s.name+'</span>'+(s.active?'<span class="badge">当前</span>':'<button class="ghost" style="padding:5px 12px;font-size:10px" onclick="activate('+JSON.stringify(s.id)+')">切换</button>');
+    d.innerHTML='<span>'+esc(s.name)+'</span>'+(s.active?'<span class="badge">当前</span>':'<button class="ghost" style="padding:5px 12px;font-size:10px" onclick="activate('+JSON.stringify(s.id)+')">切换</button>');
     sl.appendChild(d);
   });
   if(!STATE.saved||!STATE.saved.length)sl.innerHTML='<div class="hint">还没有保存的供应商</div>';

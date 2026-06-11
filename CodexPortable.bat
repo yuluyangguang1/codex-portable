@@ -17,6 +17,7 @@ echo %ESC%[38;5;45m  ============================================%ESC%[0m
 echo(
 
 set "SCRIPT_DIR=%~dp0"
+cd /d "%SCRIPT_DIR%"
 set "BIN_DIR=%SCRIPT_DIR%bin\windows-x64"
 set "PORTABLE_DATA=%SCRIPT_DIR%data"
 set "PORTABLE_CCS=%PORTABLE_DATA%\.cc-switch"
@@ -32,8 +33,8 @@ set "SCRIPT_DIR_PS=%SCRIPT_DIR:~0,-1%"
 set "SYS_CCS=%USERPROFILE%\.cc-switch"
 set "SYS_CODEX=%USERPROFILE%\.codex"
 
-if not exist "%BIN_DIR%\codex.exe" (
-  echo [ERROR] Codex CLI not found: %BIN_DIR%\codex.exe
+if not exist "!BIN_DIR!\codex.exe" (
+  echo [ERROR] Codex CLI not found: !BIN_DIR!\codex.exe
   pause
   exit /b 1
 )
@@ -52,7 +53,7 @@ exit /b 0
 :after_unlock
 
 :: Single-instance check (atomic via mkdir)
-if not exist "%PORTABLE_DATA%" mkdir "%PORTABLE_DATA%" >nul 2>&1
+if not exist "!PORTABLE_DATA!" mkdir "!PORTABLE_DATA!" >nul 2>&1
 if exist "%RUN_LOCK%" (
   set "PREV_PID="
   if exist "%RUN_LOCK%\pid" (

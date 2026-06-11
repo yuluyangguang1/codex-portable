@@ -171,77 +171,21 @@ if not defined PYTHON_CMD (
   if exist "!BIN_DIR!\python\python.exe" set "PYTHON_CMD=!BIN_DIR!\python\python.exe"
 )
 
-:: Check config first
-call :check_config
-if "!HAS_CONFIG!"=="1" (
-  echo   [ok] Configuration loaded.
-  REM Start config center in background
-  if defined PYTHON_CMD (
-    start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
-    set "WE_STARTED_CCS=1"
-  )
-  echo.
-  echo   ====================================================
-  echo   Config center: http://127.0.0.1:17590
-  echo   (Open browser to change API key anytime)
-  echo   ====================================================
-  echo.
-  goto :launch_codex
-)
-
-:: First-run: start config center in foreground and wait
-echo(
-echo =====================================
-echo   First Run - Configure API
-echo =====================================
-echo(
+:: Always start config center (foreground popup)
 if defined PYTHON_CMD (
-  if exist "%CONFIG_SERVER%" (
-    echo   Opening config center http://127.0.0.1:17590 ...
-    echo   Follow the guide to select provider, fill key, test, and save.
-    echo   (CC Switch GUI is also available via the config center UI)
-    echo(
-    start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
-    set "WE_STARTED_CCS=1"
-  ) else (
-    echo   [!] Config server script not found: !CONFIG_SERVER!
-    goto :error_cleanup
-  )
+  echo   Starting config center http://127.0.0.1:17590 ...
+  echo   Select provider, fill key, test, save. Close browser tab when done.
+  echo(
+  start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
+  set "WE_STARTED_CCS=1"
+  REM Give config center time to start, then auto-open browser
+  timeout /t 2 >nul 2>&1
+  start http://127.0.0.1:17590
 ) else (
   echo   [!] No Python found. Config center cannot start.
-  echo   Attempting to continue with existing config...
+  echo   Continuing with existing config...
   timeout /t 3 >nul 2>&1
-  goto :launch_codex
 )
-
-echo   Waiting for configuration...
-set "WAIT_COUNT=0"
-:wait_config
-timeout /t 2 >nul 2>&1
-set /a WAIT_COUNT+=1
-call :check_config
-if "!HAS_CONFIG!"=="1" goto :config_ready
-REM Check if config center is still running
-set "CCS_ALIVE=0"
-tasklist /fi "ImageName eq python.exe" 2>nul | find /i "python.exe" >nul
-if !errorlevel! EQU 0 set "CCS_ALIVE=1"
-tasklist /fi "ImageName eq python3.exe" 2>nul | find /i "python3.exe" >nul
-if !errorlevel! EQU 0 set "CCS_ALIVE=1"
-tasklist /fi "ImageName eq cc-switch.exe" 2>nul | find /i "cc-switch.exe" >nul
-if !errorlevel! EQU 0 set "CCS_ALIVE=1"
-if "!CCS_ALIVE!"=="0" (
-  echo   [!] Config center exited before config saved. Re-run to retry.
-  goto :error_cleanup
-)
-if !WAIT_COUNT! GEQ 150 (
-  echo   [!] Timeout waiting for configuration.
-  goto :error_cleanup
-)
-goto :wait_config
-
-:config_ready
-echo   [ok] Configuration detected.
-timeout /t 1 >nul 2>&1
 
 :launch_codex
 :: Create binding lock

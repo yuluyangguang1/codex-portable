@@ -203,11 +203,16 @@ if defined PYTHON_CMD (
     echo   Config center ready at http://127.0.0.1:17590
     start http://127.0.0.1:17590
   ) else (
-    echo   [!] Config center failed to start. Check logs:
-    echo     !PORTABLE_DATA!\logs\config-server.log
-    type "!PORTABLE_DATA!\logs\config-server.log" 2>nul
     echo.
-    echo   Press any key to continue without config center...
+    echo   [!] Config center failed to start.
+    echo   --- Log: ---
+    type "!PORTABLE_DATA!\logs\config-server.log" 2>nul
+    echo   --- End Log ---
+    echo.
+    REM Also try running config_server directly to see the error
+    echo   Running config_server.py directly to diagnose...
+    "!PYTHON_CMD!" "!CONFIG_SERVER!" 2>&1
+    echo   Press any key to continue...
     pause >nul
   )
 ) else (

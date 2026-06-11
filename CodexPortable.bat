@@ -176,11 +176,30 @@ if defined PYTHON_CMD (
   echo   Starting config center http://127.0.0.1:17590 ...
   echo   Select provider, fill key, test, save. Close browser tab when done.
   echo(
-  start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
+  REM Start config center with error logging
+  if not exist "!PORTABLE_DATA!\logs" mkdir "!PORTABLE_DATA!\logs"
+  start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!" ^>"!PORTABLE_DATA!\logs\config-server.log" 2^>^&1
   set "WE_STARTED_CCS=1"
-  REM Give config center time to start, then auto-open browser
-  timeout /t 2 >nul 2>&1
-  start http://127.0.0.1:17590
+  REM Wait for config center to be ready
+  set "_READY=0"
+  for /L %%I in (1,1,15) do (
+    if "!_READY!"=="0" (
+      timeout /t 1 >nul 2>&1
+      powershell -NoProfile -Command "try{$r=Invoke-WebRequest -Uri 'http://127.0.0.1:17590/api/heartbeat' -UseBasicParsing -TimeoutSec 1;exit 0}catch{exit 1}" >nul 2>&1
+      if !errorlevel! equ 0 set "_READY=1"
+    )
+  )
+  if "!_READY!"=="1" (
+    echo   Config center ready at http://127.0.0.1:17590
+    start http://127.0.0.1:17590
+  ) else (
+    echo   [!] Config center failed to start. Check logs:
+    echo     !PORTABLE_DATA!\logs\config-server.log
+    type "!PORTABLE_DATA!\logs\config-server.log" 2>nul
+    echo.
+    echo   Press any key to continue without config center...
+    pause >nul
+  )
 ) else (
   echo   [!] No Python found. Config center cannot start.
   echo   Continuing with existing config...

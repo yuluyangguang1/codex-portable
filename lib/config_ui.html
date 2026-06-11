@@ -488,7 +488,7 @@ function renderSavedList(){
   const sl=document.getElementById('saved-list');sl.innerHTML='';
   (STATE.saved||[]).forEach(s=>{
     const d=document.createElement('div');d.className='saved-item';
-    d.innerHTML='<span>'+s.name+'</span>'+(s.active?'<span class="badge">当前</span>':'<button class="ghost" style="padding:5px 12px;font-size:10px" onclick="activate(''+s.id+'')">切换</button>');
+    d.innerHTML='<span>'+s.name+'</span>'+(s.active?'<span class="badge">当前</span>':'<button class="ghost" style="padding:5px 12px;font-size:10px" onclick="activate('+JSON.stringify(s.id)+')">切换</button>');
     sl.appendChild(d);
   });
   if(!STATE.saved||!STATE.saved.length)sl.innerHTML='<div class="hint">还没有保存的供应商</div>';
@@ -500,12 +500,8 @@ async function activate(id){const r=await api('/api/activate','POST',{id});if(r.
 function opsMsg(t,kind){const m=document.getElementById('ops-msg');m.className='msg '+(kind||'wait');m.textContent=t}
 function opsOut(t){const o=document.getElementById('ops-out');o.style.display='block';o.textContent=t}
 
-async function opsDiagnose(){opsMsg('诊断中…');document.getElementById('ops-out').style.display='none';const r=await api('/api/diagnose');const lines=(r.checks||[]).map(c=>(c.ok?'[OK] ':'[!!] ')+c.label+(c.detail?'  — '+c.detail:''));opsMsg('诊断完成','ok');opsOut(lines.join('
-'))}
-async function opsViewConfig(){opsMsg('读取中…');const r=await api('/api/view');document.getElementById('ops-out').style.display='none';if(!r.configured){opsMsg('当前未配置','err');return}opsMsg('当前配置','ok');opsOut('供应商: '+(r.name||'')+'
-Base URL: '+(r.base_url||'')+'
-模型: '+(r.model||'(默认)')+'
-API Key: '+(r.api_key_masked||'')+'  ('+(r.api_key_len||0)+' 字符)')}
+async function opsDiagnose(){opsMsg('诊断中…');document.getElementById('ops-out').style.display='none';const r=await api('/api/diagnose');const lines=(r.checks||[]).map(c=>(c.ok?'[OK] ':'[!!] ')+c.label+(c.detail?'  — '+c.detail:''));opsMsg('诊断完成','ok');opsOut(lines.join('\\n'))}
+async function opsViewConfig(){opsMsg('读取中…');const r=await api('/api/view');document.getElementById('ops-out').style.display='none';if(!r.configured){opsMsg('当前未配置','err');return}opsMsg('当前配置','ok');opsOut('供应商: '+(r.name||'')+'\\nBase URL: '+(r.base_url||'')+'\\n模型: '+(r.model||'(默认)')+'\\nAPI Key: '+(r.api_key_masked||'')+'  ('+(r.api_key_len||0)+' 字符)')}
 function opsExport(){opsMsg('正在导出…','wait');api('/api/export','POST',{}).then(d=>{if(d&&d.error){opsMsg('导出失败: '+d.error,'err');return}const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='codex-portable-config.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);opsMsg('已导出（文件含明文密钥，请妥善保管）','ok')}).catch(e=>opsMsg('导出失败: '+e,'err'))}
 function opsImport(){document.getElementById('import-file').click()}
 document.getElementById('import-file').addEventListener('change',function(e){const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=async()=>{try{const blob=JSON.parse(rd.result);const r=await api('/api/import','POST',blob);if(r.ok){toast('已导入 '+r.count+' 个供应商','ok');opsMsg('导入成功：'+r.count+' 个供应商','ok');setTimeout(load,900)}else{opsMsg('导入失败: '+(r.error||''),'err')}}catch(err){opsMsg('文件解析失败: '+err,'err')}};rd.readAsText(f);e.target.value=''});

@@ -863,7 +863,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("Content-Security-Policy",
-                         "default-src 'self' 'unsafe-inline'")
+                         "default-src 'self' 'unsafe-inline'; img-src 'self' data:")
         self.end_headers()
         self.wfile.write(body)
 

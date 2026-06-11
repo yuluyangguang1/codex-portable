@@ -173,6 +173,16 @@ if not defined PYTHON_CMD (
 
 :: Always start config center (foreground popup)
 if defined PYTHON_CMD (
+  REM Test if Python actually works
+  echo   Testing Python...
+  "!PYTHON_CMD!" -c "import sys; print('Python', sys.version)" 2>&1
+  if !errorlevel! neq 0 (
+    echo   [!] Python test FAILED. Cannot start config center.
+    echo   Python: !PYTHON_CMD!
+    echo   Press any key to continue without config center...
+    pause >nul
+    goto :launch_codex
+  )
   echo   Starting config center http://127.0.0.1:17590 ...
   echo   Select provider, fill key, test, save. Close browser tab when done.
   echo(

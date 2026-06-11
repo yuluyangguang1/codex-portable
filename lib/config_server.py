@@ -408,7 +408,10 @@ def _atomic_write(path, content):
     import uuid as _uuid
     tmp = p.with_suffix("." + _uuid.uuid4().hex[:8] + p.suffix + ".tmp")
     # Write with fsync (critical for USB/exFAT)
-    fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    # Prevent symlink following (#22: avoid overwriting arbitrary files)
+    if p.is_symlink():
+        p.unlink()
+    fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:
         os.write(fd, content.encode("utf-8"))
         try:
@@ -674,7 +677,10 @@ def unbind_device():
 
 
 def reset_config():
-    """Delete all codex providers from cc-switch DB and remove config files."""
+    """Delete all codex providers from cc-switch DB and remove config files.
+    Also regenerates the CSRF token so the old token is invalidated."""
+    global SERVER_TOKEN
+    SERVER_TOKEN = secrets.token_hex(32)
     removed = 0
     if CCS_DB.exists():
         try:
@@ -990,6 +996,24 @@ class Handler(BaseHTTPRequestHandler):
                     for b in _blocked:
                         if _host.startswith(b) or _host == b.rstrip("."):
                             _ok = False; break
+                # DNS resolution check (#20+#21: IPv4-mapped IPv6 + DNS rebinding)
+                if _ok and _parsed.hostname:
+                    import socket
+                    _ip_blocked = ("127.", "0.", "10.", "169.254.",
+                                   "172.16.", "172.17.", "172.18.", "172.19.",
+                                   "172.20.", "172.21.", "172.22.", "172.23.",
+                                   "172.24.", "172.25.", "172.26.", "172.27.",
+                                   "172.28.", "172.29.", "172.30.", "172.31.",
+                                   "192.168.", "100.64.", "::ffff:", "::1")
+                    try:
+                        for fam, _, _, _, addr in socket.getaddrinfo(_parsed.hostname, None):
+                            rip = addr[0]
+                            for bip in _ip_blocked:
+                                if rip.startswith(bip):
+                                    _ok = False; break
+                            if not _ok: break
+                    except Exception:
+                        _ok = False  # DNS failure = reject
                 if not _ok:
                     self._json({"ok": False, "error": "URL not allowed (only public http/https)"}, 400)
                 else:
@@ -1037,7 +1061,7 @@ def main():
     # Write runtime.json so launcher knows the actual port
     import json as _json
     runtime = {"config_port": actual, "config_url": url,
-               "token": SERVER_TOKEN, "pid": os.getpid()}
+               "pid": os.getpid()}  # token excluded — never read by launchers
     try:
         _atomic_write(DATA_DIR / ".cc-switch" / "runtime.json",
                       _json.dumps(runtime, indent=2))

@@ -316,7 +316,7 @@ function providerIcon(pid){
   /* fallback: first letter */
   const p=STATE.providers_catalog.find(x=>x.id===pid);
   const ch=(p?p.name:pid).charAt(0).toUpperCase();
-  return '<span>'+ch+'</span>';
+  return '<span>'+esc(ch)+'</span>';
 }
 
 /* ── Tag bar renderer ── */
@@ -432,7 +432,7 @@ async function obSave(){
       toast('已保存','ok');
       setTimeout(load,1200);
     }else{toast('失败: '+(r.error||''),'err');btn.disabled=false}
-  }catch(e){toast('失败: '+e,'err');btn.disabled=false}
+  }catch(e){try{toast('失败: '+e,'err')}catch(_){};btn.disabled=false}
 }
 
 /* ── Main view ── */

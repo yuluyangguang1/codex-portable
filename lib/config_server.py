@@ -393,7 +393,8 @@ def _atomic_write(path, content):
         except Exception:
             pass  # backup failure should not block writes
 
-    tmp = p.with_suffix(p.suffix + ".tmp")
+    import uuid as _uuid
+    tmp = p.with_suffix("." + _uuid.uuid4().hex[:8] + p.suffix + ".tmp")
     # Write with fsync (critical for USB/exFAT)
     fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
     try:
@@ -875,12 +876,16 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def parse_request(self):
-        """Override to check raw request line BEFORE path normalization."""
+        """Override to check raw request line BEFORE path normalization.
+        Only blocks null bytes and backslashes here — '..' traversal is
+        handled by _path_safe() which checks the normalized path portion
+        (after query string is stripped), avoiding false positives on
+        query parameter values that happen to contain '..'.
+        """
         raw = getattr(self, 'raw_requestline', b'')
         if isinstance(raw, bytes):
             raw = raw.decode('utf-8', 'replace')
-        if '..' in raw or '\\' in raw or '\x00' in raw:
-            # Must set requestline before send_response (log_request needs it)
+        if '\\' in raw or '\x00' in raw:
             self.requestline = raw.strip()
             self.request_version = 'HTTP/1.1'
             self.send_response(400)

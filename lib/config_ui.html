@@ -419,16 +419,19 @@ function obNext(n){
 }
 
 async function obSave(){
-  const pl=obPayload();
-  const r=await api('/api/save','POST',pl);
-  if(r.ok){
-    const m=document.getElementById('ob-donemsg');
-    m.style.display='block';
-    m.textContent='配置已保存。可以关闭此页面回到终端了。';
-    document.getElementById('ob-savebtn').disabled=true;
-    toast('已保存','ok');
-    setTimeout(load,1200);
-  }else toast('失败: '+(r.error||''),'err');
+  const btn=document.getElementById('ob-savebtn');
+  btn.disabled=true;
+  try{
+    const pl=obPayload();
+    const r=await api('/api/save','POST',pl);
+    if(r.ok){
+      const m=document.getElementById('ob-donemsg');
+      m.style.display='block';
+      m.textContent='配置已保存。可以关闭此页面回到终端了。';
+      toast('已保存','ok');
+      setTimeout(load,1200);
+    }else{toast('失败: '+(r.error||''),'err');btn.disabled=false}
+  }catch(e){toast('失败: '+e,'err');btn.disabled=false}
 }
 
 /* ── Main view ── */
@@ -480,8 +483,13 @@ async function mSave(){
   const pl=mPayload();
   if(!pl.api_key){toast('请填写 API Key','err');return}
   if(!pl.base_url){toast('请填写 Base URL','err');return}
-  const r=await api('/api/save','POST',pl);
-  if(r.ok){toast('已保存','ok');setTimeout(load,800)}else toast('失败: '+(r.error||''),'err');
+  const btns=document.querySelectorAll('#m-panel button');
+  btns.forEach(b=>b.disabled=true);
+  try{
+    const r=await api('/api/save','POST',pl);
+    if(r.ok){toast('已保存','ok');setTimeout(load,800)}
+    else{toast('失败: '+(r.error||''),'err');btns.forEach(b=>b.disabled=false)}
+  }catch(e){toast('失败: '+e,'err');btns.forEach(b=>b.disabled=false)}
 }
 
 function renderSavedList(){
@@ -494,7 +502,7 @@ function renderSavedList(){
   if(!STATE.saved||!STATE.saved.length)sl.innerHTML='<div class="hint">还没有保存的供应商</div>';
 }
 
-async function activate(id){const r=await api('/api/activate','POST',{id});if(r.ok){toast('已切换','ok');setTimeout(load,600)}}
+async function activate(id){try{const r=await api('/api/activate','POST',{id});if(r.ok){toast('已切换','ok');setTimeout(load,600)}else toast('切换失败: '+(r.error||''),'err')}catch(e){toast('切换失败: '+e,'err')}}
 
 /* ── Ops ── */
 function opsMsg(t,kind){const m=document.getElementById('ops-msg');m.className='msg '+(kind||'wait');m.textContent=t}

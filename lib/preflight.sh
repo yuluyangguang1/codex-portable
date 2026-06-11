@@ -75,18 +75,33 @@ preflight_check() {
             netstat -an 2>/dev/null | grep -q ":$p.*LISTEN" && port_busy=$((port_busy + 1))
         fi
     done
-    if [ "$port_busy" -ge 10 ]; then
+    # Check if we had any port-checking tool
+    if ! command -v ss &>/dev/null && ! command -v lsof &>/dev/null && ! command -v netstat &>/dev/null; then
+        echo "  [WARN]  No port-checking tool found (ss/lsof/netstat)"
+        warnings=$((warnings + 1))
+    elif [ "$port_busy" -ge 10 ]; then
         echo "  [WARN]  Ports 17590-17599 all occupied"
         warnings=$((warnings + 1))
     fi
 
     # 6. Binary actually runs (--version smoke test)
     if [ -f "$bin_file" ] && [ -x "$bin_file" ]; then
-        local BIN_VER
+        local BIN_VER=""
         if command -v timeout &>/dev/null; then
             BIN_VER=$(timeout 5 "$bin_file" --version 2>&1 || true)
+        elif command -v perl &>/dev/null; then
+            # macOS has perl but not timeout — use alarm
+            BIN_VER=$(perl -e 'alarm 5; exec @ARGV' -- "$bin_file" --version 2>&1 || true)
         else
-            BIN_VER=$("$bin_file" --version 2>&1 || true)
+            # Last resort: background + manual kill after 5s
+            "$bin_file" --version &>/tmp/codex-pf-$$ &
+            local _pf_pid=$!
+            (sleep 5 && kill "$_pf_pid" 2>/dev/null) &
+            local _watchdog=$!
+            wait "$_pf_pid" 2>/dev/null
+            BIN_VER=$(cat /tmp/codex-pf-$$ 2>/dev/null)
+            kill "$_watchdog" 2>/dev/null
+            rm -f /tmp/codex-pf-$$
         fi
         if [ -z "$BIN_VER" ]; then
             echo "  [WARN]  Binary found but won't run: $bin_file"

@@ -230,6 +230,11 @@ jobs:
           cp bin/windows-x64/codex.exe bin/windows-x64/cc-switch.exe dist/CodexPortable-all-platforms/bin/windows-x64/
           cp -r bin/windows-x64/python dist/CodexPortable-all-platforms/bin/windows-x64/ 2>/dev/null || true
 
+          # Convert Windows scripts to CRLF (.bat/.vbs must have \r\n)
+          find dist/CodexPortable-windows-x64 dist/CodexPortable-all-platforms \
+            -maxdepth 2 \( -name "*.bat" -o -name "*.vbs" \) -exec sed -i 's/$/\r/' {} + 2>/dev/null || true
+          echo "  [ok] CRLF converted for .bat/.vbs"
+
           # Zip them
           cd dist
           for d in CodexPortable-*; do

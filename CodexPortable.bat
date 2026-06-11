@@ -135,10 +135,11 @@ if !errorlevel! NEQ 0 (
   exit /b 1
 )
 
-:: Write run-lock
-for /f "delims=" %%P in ('powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter ProcessId=$PID ^| Select-Object -ExpandProperty ParentProcessId" 2^>nul') do set "MY_PID=%%P"
-if not defined MY_PID set "MY_PID=%RANDOM%%RANDOM%"
-echo !MY_PID! > "%RUN_LOCK%\pid"
+:: Write run-lock (get cmd.exe PID via PowerShell parent chain)
+:: $PID = powershell PID → its parent = cmd.exe (the /c child) → its parent = our bat
+for /f "delims=" %%P in ('powershell -NoProfile -Command "$p1=$PID;$p2=(Get-CimInstance Win32_Process -Filter ProcessId=$p1).ParentProcessId;$p3=(Get-CimInstance Win32_Process -Filter ProcessId=$p2).ParentProcessId;Write-Output $p3" 2^>nul') do set "MY_PID=%%P"
+if not defined MY_PID set "MY_PID=%RANDOM%%RANDOM%%RANDOM%"
+(echo !MY_PID!)>"%RUN_LOCK%\pid"
 
 :: Always start config center (foreground popup)
 set "CONFIG_SERVER=%LIB_DIR%\config_server.py"

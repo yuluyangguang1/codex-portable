@@ -154,25 +154,13 @@ set "CONFIG_SERVER=%LIB_DIR%\config_server.py"
 set "WE_STARTED_CCS=0"
 set "CONFIG_PID="
 
-REM Check for real Python (not Windows Store stubs)
-REM Priority: system python3 > system python > bundled python embed
+REM Find Python: system > bundled
 set "PYTHON_CMD="
-where python3 >nul 2>&1
-if !errorlevel! EQU 0 (
-  python3 --version >nul 2>&1
-  if !errorlevel! EQU 0 set "PYTHON_CMD=python3"
-)
+where python3 >nul 2>&1 && ( python3 --version >nul 2>&1 && set "PYTHON_CMD=python3" )
+if not defined PYTHON_CMD ( where python >nul 2>&1 && ( python --version >nul 2>&1 && set "PYTHON_CMD=python" ) )
 if not defined PYTHON_CMD (
-  where python >nul 2>&1
-  if !errorlevel! EQU 0 (
-    python --version >nul 2>&1
-    if !errorlevel! EQU 0 set "PYTHON_CMD=python"
-  )
-)
-if not defined PYTHON_CMD (
-  if exist "!BIN_DIR!\python\python.exe" (
-    set "PYTHON_CMD=!BIN_DIR!\python\python.exe"
-  )
+  set "_BUNDLED=!BIN_DIR!\python\python.exe"
+  if exist "!_BUNDLED!" set "PYTHON_CMD=!_BUNDLED!"
 )
 
 :: Check config first
@@ -216,14 +204,8 @@ if defined PYTHON_CMD (
   )
 ) else (
   echo   [!] No Python found. Config center cannot start.
-  echo.
-  echo   You can still use Codex if you manually configure:
-  echo     1. Install Python from python.org, or
-  echo     2. Create data\.codex\auth.json with your API key:
-  echo        {"OPENAI_API_KEY": "sk-..."}
-  echo.
-  echo   Press any key to continue with current config...
-  pause >nul
+  echo   Attempting to continue with existing config...
+  timeout /t 3 >nul 2>&1
   goto :launch_codex
 )
 

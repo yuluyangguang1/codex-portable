@@ -152,7 +152,6 @@ for /L %%Q in (17590,1,17599) do (
 :: Always start config center (foreground popup)
 set "CONFIG_SERVER=%LIB_DIR%\config_server.py"
 set "WE_STARTED_CCS=0"
-set "CONFIG_PID="
 
 REM Find Python: system > bundled
 set "PYTHON_CMD="
@@ -171,24 +170,22 @@ if not defined PYTHON_CMD (
 if not defined PYTHON_CMD (
   if exist "!BIN_DIR!\python\python.exe" set "PYTHON_CMD=!BIN_DIR!\python\python.exe"
 )
-echo   [debug] PYTHON_CMD=!PYTHON_CMD!
 
 :: Check config first
 call :check_config
 if "!HAS_CONFIG!"=="1" (
   echo   [ok] Configuration loaded.
-  echo   Starting config center in background for key changes...
-  echo(
-  REM Start config center in background (non-blocking)
+  REM Start config center in background
   if defined PYTHON_CMD (
-    if exist "%CONFIG_SERVER%" (
-      start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
-      set "WE_STARTED_CCS=1"
-      REM Capture PID of the python process (approximate — find newest python.exe)
-      timeout /t 1 >nul 2>&1
-      for /f "tokens=2" %%P in ('wmic process where "CommandLine like '%%config_server%%'" get ProcessId /value 2^>nul ^| findstr "ProcessId"') do set "CONFIG_PID=%%P"
-    )
+    start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
+    set "WE_STARTED_CCS=1"
   )
+  echo.
+  echo   ====================================================
+  echo   Config center: http://127.0.0.1:17590
+  echo   (Open browser to change API key anytime)
+  echo   ====================================================
+  echo.
   goto :launch_codex
 )
 
@@ -206,8 +203,6 @@ if defined PYTHON_CMD (
     echo(
     start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!"
     set "WE_STARTED_CCS=1"
-    timeout /t 1 >nul 2>&1
-    for /f "tokens=2" %%P in ('wmic process where "CommandLine like '%%config_server%%'" get ProcessId /value 2^>nul ^| findstr "ProcessId"') do set "CONFIG_PID=%%P"
   ) else (
     echo   [!] Config server script not found: !CONFIG_SERVER!
     goto :error_cleanup
@@ -277,19 +272,6 @@ exit /b 0
 
 :do_cleanup
 if "!WE_STARTED_CCS!"=="1" (
-  REM Kill config center by PID (not by image name — avoids killing unrelated Python)
-  if defined CONFIG_PID (
-    taskkill /pid !CONFIG_PID! /t >nul 2>&1
-    timeout /t 2 >nul 2>&1
-    taskkill /f /pid !CONFIG_PID! /t >nul 2>&1
-  ) else (
-    REM Fallback: kill by image name if PID not captured
-    taskkill /im python.exe /t >nul 2>&1
-    taskkill /im python3.exe /t >nul 2>&1
-    timeout /t 2 >nul 2>&1
-    taskkill /f /im python.exe /t >nul 2>&1
-    taskkill /f /im python3.exe /t >nul 2>&1
-  )
   taskkill /im cc-switch.exe /t >nul 2>&1
   taskkill /f /im cc-switch.exe /t >nul 2>&1
 )

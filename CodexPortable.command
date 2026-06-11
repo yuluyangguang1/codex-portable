@@ -219,25 +219,9 @@ ensure_symlink() {
 ensure_symlink "$SYS_CCS" "$PORTABLE_CCS"
 ensure_symlink "$SYS_CODEX" "$PORTABLE_CODEX"
 
-CC_SWITCH_PID=""
-WE_STARTED_CCS=0
-
 # 退出清理
 cleanup() {
-    if [ "$WE_STARTED_CCS" = "1" ] && [ -n "${CC_SWITCH_PID:-}" ] && kill -0 "$CC_SWITCH_PID" 2>/dev/null; then
-        # 先收集子进程：父进程被 kill 后子进程 reparent 到 PID 1，pgrep -P 就找不到了
-        local children
-        children=$(pgrep -P "$CC_SWITCH_PID" 2>/dev/null || true)
-        kill -TERM "$CC_SWITCH_PID" 2>/dev/null
-        for _ in 1 2 3 4 5; do
-            kill -0 "$CC_SWITCH_PID" 2>/dev/null || break
-            sleep 1
-        done
-        kill -0 "$CC_SWITCH_PID" 2>/dev/null && kill -9 "$CC_SWITCH_PID" 2>/dev/null
-        for child in $children; do
-            kill -9 "$child" 2>/dev/null
-        done
-    fi
+    # 配置中心已在前台运行并自行退出，无需 kill
     [ -L "$SYS_CCS" ] && rm "$SYS_CCS" 2>/dev/null
     [ -L "$SYS_CODEX" ] && rm "$SYS_CODEX" 2>/dev/null
     [ -d "$RUN_LOCK" ] && rm -rf "$RUN_LOCK"
@@ -291,52 +275,25 @@ if ! has_valid_config; then
     CONFIG_SERVER="$LIB_DIR/config_server.py"
     if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
         echo "  正在打开配置中心 http://127.0.0.1:17590 ..."
-        echo "  按引导选供应商、填 Key、测试、保存即可。"
-        echo "  （CC Switch GUI 也可在配置中心界面内启动）"
+        echo "  按引导选供应商、填 Key、测试、保存，然后点击「启动 Codex CLI」。"
         echo ""
-        mkdir -p "$SCRIPT_DIR/data/logs" 2>/dev/null
-        "$PY3" "$CONFIG_SERVER" > "$SCRIPT_DIR/data/logs/config-server.log" 2>&1 &
-        CC_SWITCH_PID=$!
-        WE_STARTED_CCS=1
+        # 前台运行配置中心（阻塞），等待用户点击"启动"后退出
+        "$PY3" "$CONFIG_SERVER"
+        echo "  配置中心已关闭，继续启动 Codex CLI..."
+        echo ""
     else
         echo "  [!] 未找到 python3，配置中心无法启动。"
         echo "  请安装 python3 后重试。"
         echo ""
     fi
-
-    echo "  等待配置..."
-    for i in $(seq 1 150); do
-        sleep 2
-        if has_valid_config; then
-            echo "  [ok] 检测到配置，继续启动"
-            sleep 1
-            break
-        fi
-        # cc-switch 死亡检测：用户关掉 GUI 就立即退出，不干等 5 分钟
-        if [ "$WE_STARTED_CCS" = "1" ] && [ -n "${CC_SWITCH_PID:-}" ] && ! kill -0 "$CC_SWITCH_PID" 2>/dev/null; then
-            echo ""
-            echo "  [!] CC Switch 已退出但仍未检测到配置。请重新运行。"
-            exit 1
-        fi
-        if [ $((i % 15)) -eq 0 ]; then
-            printf "."
-        fi
-    done
-
-    if ! has_valid_config; then
-        echo "  [!] 等待超时，请重新运行"
-        exit 1
-    fi
 else
-    # 已有配置，仍然启动配置中心（后台非阻塞），方便随时修改 Key
+    # 已有配置，启动配置中心（前台阻塞），方便随时修改 Key
     CONFIG_SERVER="$LIB_DIR/config_server.py"
     if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
-        echo "  配置中心已启动: http://127.0.0.1:17590"
-        echo "  （如需修改 Key，在浏览器中操作后保存即可）"
-        mkdir -p "$SCRIPT_DIR/data/logs" 2>/dev/null
-        "$PY3" "$CONFIG_SERVER" > "$SCRIPT_DIR/data/logs/config-server.log" 2>&1 &
-        CC_SWITCH_PID=$!
-        WE_STARTED_CCS=1
+        echo "  配置中心: http://127.0.0.1:17590"
+        echo "  修改 Key 后点击「启动 Codex CLI」即可。"
+        "$PY3" "$CONFIG_SERVER"
+        echo "  配置中心已关闭，继续启动 Codex CLI..."
     fi
 fi
 

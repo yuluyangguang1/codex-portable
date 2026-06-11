@@ -429,11 +429,18 @@ async function obSave(){
     if(r.ok){
       const m=document.getElementById('ob-donemsg');
       m.style.display='block';
-      m.textContent='配置已保存。可以关闭此页面回到终端了。';
+      m.innerHTML='配置已保存！<br><button onclick="launchCodex()" style="margin-top:12px;padding:10px 28px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:15px;cursor:pointer">启动 Codex CLI</button>';
       toast('已保存','ok');
       setTimeout(load,1200);
     }else{toast('失败: '+(r.error||''),'err');btn.disabled=false}
   }catch(e){try{toast('失败: '+e,'err')}catch(_){};btn.disabled=false}
+}
+
+async function launchCodex(){
+  try{
+    await api('/api/shutdown','POST',{});
+  }catch(e){}
+  document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;color:var(--fg)">配置完成，正在启动 Codex CLI...</div>';
 }
 
 /* ── Main view ── */
@@ -568,6 +575,21 @@ async function load(){
   }
 }
 load();
+</script>
+
+<!-- ═══ Floating Launch Bar ═══ -->
+<div id="launch-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding:12px 20px;text-align:center;z-index:100;backdrop-filter:blur(8px)">
+  <button onclick="launchCodex()" style="padding:10px 36px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">启动 Codex CLI</button>
+  <span style="margin-left:12px;color:var(--fg-muted);font-size:13px">关闭配置中心并启动 Codex</span>
+</div>
+<script>
+(function(){
+  var lb=document.getElementById('launch-bar');
+  var mo=new MutationObserver(function(){
+    lb.style.display=(document.getElementById('main').style.display!=='none')?'block':'none';
+  });
+  mo.observe(document.getElementById('main'),{attributes:true,attributeFilter:['style']});
+})();
 </script>
 </body>
 </html>

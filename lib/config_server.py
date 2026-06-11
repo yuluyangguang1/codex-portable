@@ -1051,6 +1051,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": ok, "message": msg})
             elif self.path == "/api/export":
                 self._json(export_config())
+            elif self.path == "/api/shutdown":
+                self._json({"ok": True, "message": "配置中心即将关闭"})
+                import threading
+                threading.Thread(target=self.server.shutdown, daemon=True).start()
             else:
                 self._json({"ok": False, "error": "not found"}, 404)
         except Exception as e:
@@ -1091,6 +1095,7 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         pass
+    print("  配置中心已关闭")
 
 
 if __name__ == "__main__":

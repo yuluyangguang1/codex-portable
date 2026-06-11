@@ -176,24 +176,9 @@ ensure_symlink() {
 ensure_symlink "$SYS_CCS" "$PORTABLE_CCS"
 ensure_symlink "$SYS_CODEX" "$PORTABLE_CODEX"
 
-CC_SWITCH_PID=""
-WE_STARTED_CCS=0
-
+# 退出清理
 cleanup() {
-    if [ "$WE_STARTED_CCS" = "1" ] && [ -n "${CC_SWITCH_PID:-}" ] && kill -0 "$CC_SWITCH_PID" 2>/dev/null; then
-        # 先收集子进程再 kill 父进程（父死后子进程 reparent，pgrep -P 找不到）
-        local children
-        children=$(pgrep -P "$CC_SWITCH_PID" 2>/dev/null || true)
-        kill -TERM "$CC_SWITCH_PID" 2>/dev/null
-        for _ in 1 2 3 4 5; do
-            kill -0 "$CC_SWITCH_PID" 2>/dev/null || break
-            sleep 1
-        done
-        kill -0 "$CC_SWITCH_PID" 2>/dev/null && kill -9 "$CC_SWITCH_PID" 2>/dev/null
-        for child in $children; do
-            kill -9 "$child" 2>/dev/null
-        done
-    fi
+    # 配置中心已在前台运行并自行退出，无需 kill
     [ -L "$SYS_CCS" ] && rm "$SYS_CCS" 2>/dev/null
     [ -L "$SYS_CODEX" ] && rm "$SYS_CODEX" 2>/dev/null
     [ -d "$RUN_LOCK" ] && rm -rf "$RUN_LOCK"
@@ -237,36 +222,23 @@ if ! has_valid_config; then
     CONFIG_SERVER="$LIB_DIR/config_server.py"
     if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
         echo "  正在打开配置中心 http://127.0.0.1:17590 ..."
+        echo "  按引导选供应商、填 Key、测试、保存，然后点击「启动 Codex CLI」。"
         echo ""
-        mkdir -p "$SCRIPT_DIR/data/logs" 2>/dev/null
-        "$PY3" "$CONFIG_SERVER" > "$SCRIPT_DIR/data/logs/config-server.log" 2>&1 &
-        CC_SWITCH_PID=$!
-        WE_STARTED_CCS=1
+        # 前台运行配置中心（阻塞），等待用户点击"启动"后退出
+        "$PY3" "$CONFIG_SERVER"
+        echo "  配置中心已关闭，继续启动 Codex CLI..."
     else
         echo "  [!] 未找到 python3，配置中心无法启动。"
         echo "  请安装 python3 后重试。"
     fi
-    echo "  等待配置..."
-    for i in $(seq 1 150); do
-        sleep 2
-        has_valid_config && { echo "  [ok] 配置已就绪"; sleep 1; break; }
-        # cc-switch 死亡检测
-        if [ "$WE_STARTED_CCS" = "1" ] && [ -n "${CC_SWITCH_PID:-}" ] && ! kill -0 "$CC_SWITCH_PID" 2>/dev/null; then
-            echo "  [!] CC Switch 已退出但仍未检测到配置。请重新运行。"
-            exit 1
-        fi
-    done
-    has_valid_config || { echo "  [!] 等待超时"; exit 1; }
 else
-    # 已有配置，仍然启动配置中心（后台非阻塞）
+    # 已有配置，启动配置中心（前台阻塞），方便随时修改 Key
     CONFIG_SERVER="$LIB_DIR/config_server.py"
     if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
-        echo "  配置中心已启动: http://127.0.0.1:17590"
-        echo "  （如需修改 Key，在浏览器中操作后保存即可）"
-        mkdir -p "$SCRIPT_DIR/data/logs" 2>/dev/null
-        "$PY3" "$CONFIG_SERVER" > "$SCRIPT_DIR/data/logs/config-server.log" 2>&1 &
-        CC_SWITCH_PID=$!
-        WE_STARTED_CCS=1
+        echo "  配置中心: http://127.0.0.1:17590"
+        echo "  修改 Key 后点击「启动 Codex CLI」即可。"
+        "$PY3" "$CONFIG_SERVER"
+        echo "  配置中心已关闭，继续启动 Codex CLI..."
     fi
 fi
 

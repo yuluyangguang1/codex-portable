@@ -184,37 +184,12 @@ if defined PYTHON_CMD (
     goto :launch_codex
   )
   echo   Starting config center http://127.0.0.1:17590 ...
-  echo   Select provider, fill key, test, save. Close browser tab when done.
+  echo   Select provider, fill key, test, save, then click "启动 Codex CLI".
   echo(
-  REM Start config center with error logging
-  if not exist "!PORTABLE_DATA!\logs" mkdir "!PORTABLE_DATA!\logs"
-  start "" cmd /c "!PYTHON_CMD!" "!CONFIG_SERVER!" ^>"!PORTABLE_DATA!\logs\config-server.log" 2^>^&1
-  set "WE_STARTED_CCS=1"
-  REM Wait for config center to be ready
-  set "_READY=0"
-  for /L %%I in (1,1,15) do (
-    if "!_READY!"=="0" (
-      timeout /t 1 >nul 2>&1
-      powershell -NoProfile -Command "try{$r=Invoke-WebRequest -Uri 'http://127.0.0.1:17590/api/heartbeat' -UseBasicParsing -TimeoutSec 1;exit 0}catch{exit 1}" >nul 2>&1
-      if !errorlevel! equ 0 set "_READY=1"
-    )
-  )
-  if "!_READY!"=="1" (
-    echo   Config center ready at http://127.0.0.1:17590
-    start http://127.0.0.1:17590
-  ) else (
-    echo.
-    echo   [!] Config center failed to start.
-    echo   --- Log: ---
-    type "!PORTABLE_DATA!\logs\config-server.log" 2>nul
-    echo   --- End Log ---
-    echo.
-    REM Also try running config_server directly to see the error
-    echo   Running config_server.py directly to diagnose...
-    "!PYTHON_CMD!" "!CONFIG_SERVER!" 2>&1
-    echo   Press any key to continue...
-    pause >nul
-  )
+  REM Run config center in foreground (blocking) — waits for user to click "启动"
+  "!PYTHON_CMD!" "!CONFIG_SERVER!"
+  echo   Config center closed. Starting Codex CLI...
+  echo(
 ) else (
   echo   [!] No Python found. Config center cannot start.
   echo   Continuing with existing config...

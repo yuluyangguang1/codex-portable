@@ -204,6 +204,11 @@ PROVIDERS = [
                 "deepseek-ai/DeepSeek-R1"],
      "key_hint": "sk-...", "note": "国产聚合，多模型一站式",
      "tags": ["cn", "cheap"]},
+    # ── 小米 MiMo ──
+    {"id": "xiaomi", "name": "小米 MiMo", "base_url": "https://token-plan-cn.xiaomimimo.com/v1",
+     "models": ["mimo-v2.5-pro", "mimo-v2.5", "mimo-v2-pro"],
+     "key_hint": "tp-...", "note": "小米 MiMo 推理模型，tp- 开头的 Key",
+     "tags": ["cn"]},
     # ── 自定义 ──
     {"id": "custom", "name": "自定义 / 中转站", "base_url": "",
      "models": [], "custom": True,

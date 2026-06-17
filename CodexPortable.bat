@@ -211,6 +211,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%LIB_DIR%\binding.ps1" crea
 echo   Mode: Direct ^| Data: portable folder
 echo(
 set "CODEX_HOME=%PORTABLE_CODEX%"
+
+:: Read API keys from auth.json and set as env vars
+set "AUTH_FILE=%PORTABLE_CODEX%\auth.json"
+if exist "%AUTH_FILE%" (
+    for /f "usebackq delims=" %%i in (`python3 -c "import json;f=open('%AUTH_FILE%');d=json.load(f);[print(f'{k}={v}') for k,v in d.items() if isinstance(v,str) and v]" 2^>nul`) do set "%%i"
+)
+
 "%BIN_DIR%\codex.exe" %*
 goto :final_cleanup
 

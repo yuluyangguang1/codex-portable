@@ -344,15 +344,16 @@ def save_provider(name, base_url, api_key, model):
     # provider config from a previous save lingering in the file.
     toml_lines = []
     if base_url != "https://api.openai.com/v1":
-        # Codex v0.136+ only supports wire_api = "responses".
-        # The "chat" mode was removed.
+        # Codex v0.136+ supports wire_api = "responses" (OpenAI native)
+        # and "chat" (OpenAI-compatible, for third-party providers).
+        # Use "chat" for non-OpenAI providers that don't support /v1/responses.
         toml_lines.append('model_provider = "custom"')
         toml_lines.append(f'model = "{_toml_escape(model or "gpt-5.5")}"')
         toml_lines.append("")
         toml_lines.append("[model_providers.custom]")
         toml_lines.append(f'name = "{_toml_escape(name or "Custom")}"')
         toml_lines.append(f'base_url = "{_toml_escape(base_url)}"')
-        toml_lines.append('wire_api = "responses"')
+        toml_lines.append('wire_api = "chat"')
         toml_lines.append('env_key = "OPENAI_API_KEY"')
     elif model:
         toml_lines.append(f'model = "{_toml_escape(model)}"')

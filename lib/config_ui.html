@@ -14,7 +14,7 @@
   --emerald:oklch(0.765 0.177 163.223);--emerald-dim:oklch(0.696 0.17 162.48);
   --warning:#ffbd38;--success:#4ade80;--destructive:#fb2c36;
   --font-sans:system-ui,-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
-  --font-serif:Georgia,'Noto Serif SC','Source Han Serif SC',serif;
+  --font-serif:'LXGW WenKai',Georgia,'Noto Serif SC','Source Han Serif SC',serif;
   --font-mono:'Courier New','Menlo',monospace;
 }
 [data-theme="light"]{--bg:#f5f0e8;--card:#f5f0e8;--secondary:#f5f0e8;--muted:#c8c4bb;--fg:#3d3a35;--fg-muted:#7a7670;--border:rgba(61,58,53,0.14);--accent:#d4e600;--emerald:#d4e600;--emerald-dim:#028a60}
@@ -132,10 +132,17 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 .y-theme-btn{background:none;border:none;cursor:pointer;color:var(--fg);opacity:.5;padding:6px;transition:opacity .2s}
 .y-theme-btn:hover{opacity:1}
 @media(max-width:640px){.y-display{font-size:2rem}.y-nav{flex-wrap:wrap}.y-hero{padding:32px 16px 24px}}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+:focus:not(:focus-visible){outline:none}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+.skip-link{position:absolute;top:-40px;left:0;background:var(--accent);color:var(--bg);padding:8px 16px;z-index:1000;transition:top .3s;font-family:var(--font-sans);font-size:13px}
+.skip-link:focus{top:0}
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" />
 </head>
 <body>
-<div class="y-page">
+<a href="#main" class="skip-link">跳到主要内容</a>
+<div class="y-page" role="main" id="main">
 
 <nav class="y-nav">
   <div class="y-nav-cell"><a href="https://yuai-r.cn/" class="y-brand">yu.ai</a></div>
@@ -175,7 +182,7 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
         <h2>配置 API 供应商</h2>
         <div class="desc">选择供应商，填写 Key 和模型，Codex CLI 走 OpenAI 协议。</div>
         <div class="tag-bar" id="ob-tags"></div>
-        <div class="search-box"><input id="ob-search" placeholder="搜索供应商名称或备注…" oninput="obFilter()"></div>
+        <div class="search-box"><input id="ob-search" placeholder="搜索供应商名称或备注…" aria-label="搜索供应商" oninput="obFilter()"></div>
         <div class="provider-grid" id="ob-grid"></div>
         <!-- Key & model form (shown after selecting provider) -->
         <div id="ob-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">

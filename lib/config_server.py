@@ -175,7 +175,54 @@ PROVIDERS = [
                 "deepseek-ai/DeepSeek-R1"],
      "key_hint": "sk-...", "note": "国产聚合，多模型一站式",
      "tags": ["cn", "cheap"]},
-    # ── 小米 MiMo ──    # ── 自定义 ──
+    # ── 小米 MiMo ──
+    # ── OpenCodex 集成: openai-chat 适配器 Provider ──
+    {"id": "kimi", "name": "Kimi (月之暗面)", "base_url": "https://api.kimi.com/coding/v1",
+     "models": ["kimi-k2.7-code", "kimi-k2.6", "kimi-k2.5"],
+     "key_hint": "粘贴 Kimi API Key", "note": "Kimi K2.7 最新，代码专精",
+     "tags": ["cn", "hot"]},
+    {"id": "xiaomi", "name": "小米 MiMo", "base_url": "https://api.xiaomimimo.com/v1",
+     "models": ["mimo-v2.5-pro", "mimo-v2.5", "mimo-v2-pro", "mimo-v2-flash"],
+     "key_hint": "粘贴小米 API Key", "note": "MiMo v2.5 Pro 最新",
+     "tags": ["cn"]},
+    {"id": "huggingface", "name": "HuggingFace", "base_url": "https://router.huggingface.co/v1",
+     "models": ["meta-llama/Llama-4-Scout-17B-16E-Instruct", "Qwen/Qwen3-235B-A22B",
+                "deepseek-ai/DeepSeek-V4-Pro"],
+     "key_hint": "hf_...", "note": "开源模型推理，免费额度",
+     "tags": ["free"]},
+    {"id": "nvidia", "name": "NVIDIA NIM", "base_url": "https://integrate.api.nvidia.com/v1",
+     "models": ["meta/llama-4-scout-17b-16e-instruct", "nvidia/llama-3.1-nemotron-ultra-253b-v1"],
+     "key_hint": "nvapi-...", "note": "NVIDIA 推理，免费额度",
+     "tags": ["free", "fast"]},
+    {"id": "sambanova", "name": "SambaNova", "base_url": "https://api.sambanova.ai/v1",
+     "models": ["Meta-Llama-4-Scout-17B-16E-Instruct", "DeepSeek-V4-Pro"],
+     "key_hint": "粘贴 SambaNova API Key", "note": "高速推理",
+     "tags": ["fast"]},
+    {"id": "ollama", "name": "Ollama (本地)", "base_url": "http://localhost:11434/v1",
+     "models": ["llama3.3:70b", "qwen3:32b", "deepseek-v4:latest", "codellama:34b"],
+     "key_hint": "通常无需 Key", "note": "本地模型，无需 API Key",
+     "tags": ["local", "free"]},
+    {"id": "vllm", "name": "vLLM (本地)", "base_url": "http://localhost:8000/v1",
+     "models": [], "custom": True,
+     "key_hint": "通常无需 Key", "note": "本地 vLLM 推理",
+     "tags": ["local", "free"]},
+    {"id": "lm-studio", "name": "LM Studio (本地)", "base_url": "http://localhost:1234/v1",
+     "models": [], "custom": True,
+     "key_hint": "无需 Key", "note": "本地 LM Studio",
+     "tags": ["local", "free"]},
+    {"id": "moonshot", "name": "Moonshot (Kimi API)", "base_url": "https://api.moonshot.ai/v1",
+     "models": ["moonshot-v1-128k", "moonshot-v1-32k", "moonshot-v1-8k"],
+     "key_hint": "sk-...", "note": "Moonshot API",
+     "tags": ["cn"]},
+    {"id": "cloudflare-workers-ai", "name": "Cloudflare Workers AI", "base_url": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+     "models": ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"],
+     "key_hint": "粘贴 Cloudflare API Key", "note": "Cloudflare 推理，免费额度",
+     "tags": ["free"]},
+    {"id": "vercel-ai-gateway", "name": "Vercel AI Gateway", "base_url": "https://ai-gateway.vercel.sh/v1",
+     "models": ["gpt-5.5", "claude-sonnet-5", "gemini-3-pro"],
+     "key_hint": "粘贴 Vercel API Key", "note": "Vercel AI 网关",
+     "tags": []},
+    # ── 自定义 ──
     {"id": "custom", "name": "自定义 / 中转站", "base_url": "",
      "models": [], "custom": True,
      "key_hint": "粘贴中转站 API Key", "note": "填写中转站/自建网关的 base_url",
@@ -309,6 +356,40 @@ def save_provider(name, base_url, api_key, model):
     # Always write config.toml completely (overwrite) to prevent stale
     # provider config from a previous save lingering in the file.
     toml_lines = []
+    
+    # Provider-specific wire_api selection
+    # Some providers support Responses API, others need Chat Completions proxy
+    _responses_api_providers = [
+        "https://api.openai.com/v1",           # OpenAI native
+        "https://openrouter.ai/api/v1",         # OpenRouter (supports Responses)
+        "https://api.groq.com/openai/v1",       # Groq (supports Responses)
+        "https://api.cerebras.ai/v1",           # Cerebras
+        "https://api.together.xyz/v1",          # Together
+        "https://api.fireworks.ai/inference/v1", # Fireworks
+        "https://api.deepinfra.com/v1/openai",  # DeepInfra
+    ]
+    
+    _chat_api_providers = [
+        "https://api.anthropic.com",            # Anthropic
+        "https://generativelanguage.googleapis.com", # Google
+        "https://api.kimi.com",                 # Kimi
+        "https://api.xiaomimimo.com",           # Xiaomi
+        "https://api.minimax.io",               # MiniMax
+        "https://api.minimaxi.com",             # MiniMax CN
+        "https://api.z.ai",                     # Zhipu GLM
+        "https://api.moonshot.ai",              # Moonshot
+        "https://api.mistral.ai",               # Mistral
+        "https://api.x.ai",                     # xAI
+        "https://api.deepseek.com",             # DeepSeek
+        "https://dashscope.aliyuncs.com",       # Qwen
+        "https://router.huggingface.co",        # HuggingFace
+        "https://integrate.api.nvidia.com",     # NVIDIA
+        "https://api.sambanova.ai",             # SambaNova
+        "http://localhost:11434",               # Ollama
+        "http://localhost:8000",                # vLLM
+        "http://localhost:1234",                # LM Studio
+    ]
+    
     if base_url != "https://api.openai.com/v1":
         # Codex v0.136+ supports wire_api = "responses" (OpenAI native)
         # and "chat" (OpenAI-compatible, for third-party providers).
@@ -319,7 +400,17 @@ def save_provider(name, base_url, api_key, model):
         toml_lines.append("[model_providers.custom]")
         toml_lines.append(f'name = "{_toml_escape(name or "Custom")}"')
         toml_lines.append(f'base_url = "{_toml_escape(base_url)}"')
-        toml_lines.append('wire_api = "responses"')
+        # Select wire_api based on provider classification
+        use_responses = any(base_url.startswith(p) for p in _responses_api_providers)
+        use_chat = any(base_url.startswith(p) for p in _chat_api_providers)
+        
+        if use_chat:
+            toml_lines.append('wire_api = "chat"')
+        elif use_responses:
+            toml_lines.append('wire_api = "responses"')
+        else:
+            # Default: try Responses API (most compatible)
+            toml_lines.append('wire_api = "responses"')
         toml_lines.append('env_key = "OPENAI_API_KEY"')
     elif model:
         toml_lines.append(f'model = "{_toml_escape(model)}"')

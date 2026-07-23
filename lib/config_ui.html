@@ -9,6 +9,23 @@
 <meta name="cc-token" content="__CC_TOKEN__">
 <style>
 :root{
+  /* Design Tokens */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --bg:#170d02;--card:#1a1208;--secondary:#1e1508;--muted:#1c1409;
   --fg:#f5f5f5;--fg-muted:#9a968e;--border:#f5f5f526;--accent:#f5f5f5;
   --emerald:oklch(0.765 0.177 163.223);--emerald-dim:oklch(0.696 0.17 162.48);
@@ -59,7 +76,7 @@ select{cursor:pointer}select option{background:var(--bg);color:var(--fg)}
 .pcard .pn{font-family:var(--font-serif);font-size:14px;font-weight:600;color:var(--fg)}
 .pcard .pnote{font-family:var(--font-mono);font-size:10px;color:var(--fg-muted);margin-top:3px;letter-spacing:.03em;opacity:.6}
 .pcard .ptags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
-.pcard .ptag{font-family:var(--font-mono);font-size:8px;padding:1px 5px;border:1px solid var(--border);color:var(--fg-muted);letter-spacing:.06em;text-transform:uppercase;opacity:.6}
+.pcard .ptag{font-family:var(--font-mono);font-size:10px;padding:1px 5px;border:1px solid var(--border);color:var(--fg-muted);letter-spacing:.06em;text-transform:uppercase;opacity:.6}
 button{padding:11px 22px;background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:.15s}
 button:hover{background:var(--accent);color:var(--bg)}
 button:disabled{opacity:.4;cursor:not-allowed;border-color:var(--border);color:var(--fg-muted)}
@@ -72,7 +89,7 @@ button.danger:hover{background:var(--destructive);color:#fff}
 .steps{display:flex;gap:0;margin:0 0 24px;border:1px solid var(--border)}
 .step{flex:1;padding:13px 14px;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-muted);border-right:1px solid var(--border);transition:.2s;display:flex;align-items:center;gap:8px}
 .step:last-child{border-right:none}
-.step .num{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);font-size:9px;flex-shrink:0}
+.step .num{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);font-size:11px;flex-shrink:0}
 .step.active{color:var(--fg);background:rgba(245,240,232,.04)}
 .step.active .num{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 .step.done{color:var(--fg-muted)}
@@ -83,7 +100,7 @@ button.danger:hover{background:var(--destructive);color:#fff}
 .msg.wait{display:block;color:var(--fg-muted)}
 .saved-list{margin-top:8px}
 .saved-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid var(--border);margin-bottom:-1px;font-family:var(--font-mono);font-size:13px}
-.badge{font-size:9px;padding:3px 8px;border:1px solid var(--emerald);color:var(--emerald);letter-spacing:.08em;text-transform:uppercase}
+.badge{font-size:11px;padding:3px 8px;border:1px solid var(--emerald);color:var(--emerald);letter-spacing:.08em;text-transform:uppercase}
 .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
 .kv:last-child{border:none}
 .kv .k{color:var(--fg-muted);font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
@@ -124,7 +141,7 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 .y-term-h{display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--border)}
 .y-td{width:9px;height:9px;border-radius:50%}
 .y-td:nth-child(1){background:var(--fg)}.y-td:nth-child(2){background:var(--fg);opacity:.6}.y-td:nth-child(3){background:var(--fg);opacity:.3}
-.y-term-label{margin-left:auto;font-family:var(--font-mono);font-size:9px;letter-spacing:.15em;opacity:.4;text-transform:uppercase}
+.y-term-label{margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.15em;opacity:.4;text-transform:uppercase}
 .y-term-b{font-family:var(--font-mono);font-size:12px;line-height:1.8;padding:14px;white-space:pre-wrap;min-height:60px}
 .y-term-b .p{color:var(--accent)}.y-term-b .t{opacity:.6}
 @keyframes yblink{0%,50%{opacity:1}51%,100%{opacity:0}}
@@ -137,10 +154,27 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 .skip-link{position:absolute;top:-40px;left:0;background:var(--accent);color:var(--bg);padding:8px 16px;z-index:1000;transition:top .3s;font-family:var(--font-sans);font-size:13px}
 .skip-link:focus{top:0}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent, #edff45);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" />
 </head>
 <body>
+<main role="main">
 <a href="#main" class="skip-link">跳到主要内容</a>
 <div class="y-page" role="main" id="main">
 
@@ -598,5 +632,6 @@ load();
   mo.observe(document.getElementById('main'),{attributes:true,attributeFilter:['style']});
 })();
 </script>
+</main>
 </body>
 </html>

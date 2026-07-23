@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-VER="rust-v0.145.0"
+VER=""
 ALL=0
 while [ $# -gt 0 ]; do
     case "$1" in

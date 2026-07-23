@@ -22,6 +22,17 @@ from lib.adapters import (
     parse_stream_line,
     build_request_body,
 )
+from lib.adapters.anthropic_adapter import (
+    messages_to_anthropic_format,
+    tools_to_anthropic_format,
+    build_anthropic_request,
+    parse_anthropic_stream_line,
+)
+from lib.adapters.google_adapter import (
+    messages_to_gemini_format,
+    tools_to_gemini_format,
+    build_gemini_request,
+)
 
 
 class ResponsesProxyHandler(BaseHTTPRequestHandler):
@@ -77,46 +88,90 @@ class ResponsesProxyHandler(BaseHTTPRequestHandler):
             # Convert system prompt
             system_parts = [system_prompt] if system_prompt else []
             
-            # Convert messages
-            chat_messages = messages_to_chat_format(
-                input_messages,
-                system_prompt=system_parts,
-                tools=tools,
-            )
+            # Route to correct adapter based on provider type
+            if provider_adapter == "anthropic":
+                # Anthropic Messages API
+                anthropic_messages, system_blocks = messages_to_anthropic_format(
+                    input_messages,
+                    system_prompt=system_parts,
+                    tools=tools,
+                )
+                anthropic_tools = tools_to_anthropic_format(tools) if tools else None
+                request_body = build_anthropic_request(
+                    model=model,
+                    messages=anthropic_messages,
+                    system_blocks=system_blocks,
+                    tools=anthropic_tools,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=stream,
+                    reasoning_effort=reasoning.get("effort"),
+                )
+                upstream_url = f"{provider_base_url.rstrip('/')}/v1/messages"
+                headers = {
+                    "Content-Type": "application/json",
+                    "x-api-key": provider_api_key,
+                    "anthropic-version": "2023-06-01",
+                }
             
-            # Convert tools
-            chat_tools = tools_to_chat_format(tools, tool_choice)
+            elif provider_adapter == "google":
+                # Google Gemini API
+                system_instruction, contents = messages_to_gemini_format(
+                    input_messages,
+                    system_prompt=system_parts,
+                    tools=tools,
+                )
+                gemini_tools = tools_to_gemini_format(tools) if tools else None
+                request_body = build_gemini_request(
+                    model=model,
+                    contents=contents,
+                    system_instruction=system_instruction,
+                    tools=gemini_tools,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=stream,
+                    reasoning_effort=reasoning.get("effort"),
+                )
+                upstream_url = f"{provider_base_url.rstrip('/')}/v1beta/models/{model}:streamGenerateContent"
+                headers = {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": provider_api_key,
+                }
             
-            # Build request body
-            chat_body = build_request_body(
-                model=model,
-                messages=chat_messages,
-                tools=chat_tools,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=stream,
-                reasoning_effort=reasoning.get("effort"),
-            )
-            
-            # Proxy to upstream
-            upstream_url = f"{provider_base_url.rstrip('/')}/chat/completions"
-            
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {provider_api_key}",
-            }
+            else:
+                # OpenAI Chat Completions API (default)
+                chat_messages = messages_to_chat_format(
+                    input_messages,
+                    system_prompt=system_parts,
+                    tools=tools,
+                )
+                chat_tools = tools_to_chat_format(tools, tool_choice)
+                request_body = build_request_body(
+                    model=model,
+                    messages=chat_messages,
+                    tools=chat_tools,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=stream,
+                    reasoning_effort=reasoning.get("effort"),
+                )
+                upstream_url = f"{provider_base_url.rstrip('/')}/chat/completions"
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {provider_api_key}",
+                }
             
             req = urllib.request.Request(
                 upstream_url,
-                data=json.dumps(chat_body).encode(),
+                data=json.dumps(request_body).encode(),
                 headers=headers,
                 method="POST",
             )
             
             if stream:
-                self._proxy_stream(req, model)
+                self._proxy_stream(req, model, provider_adapter)
             else:
-                self._proxy_non_stream(req, model)
+                self._proxy_non_stream(req, model, provider_adapter)
         
         except Exception as e:
             self._json_response(
@@ -124,8 +179,8 @@ class ResponsesProxyHandler(BaseHTTPRequestHandler):
                 status=500,
             )
     
-    def _proxy_stream(self, req: urllib.request.Request, model: str):
-        """Proxy streaming response, converting Chat Completions SSE to Responses SSE."""
+    def _proxy_stream(self, req: urllib.request.Request, model: str, adapter: str = "openai-chat"):
+        """Proxy streaming response, converting upstream SSE to Responses SSE."""
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
@@ -337,11 +392,13 @@ def start_proxy(
     base_url: str = "",
     api_key: str = "",
     model: str = "",
+    adapter: str = "openai-chat",
 ):
     """Start the Responses API proxy server."""
     os.environ["PROVIDER_BASE_URL"] = base_url
     os.environ["PROVIDER_API_KEY"] = api_key
     os.environ["PROVIDER_MODEL"] = model
+    os.environ["PROVIDER_ADAPTER"] = adapter
     
     server = HTTPServer(("127.0.0.1", port), ResponsesProxyHandler)
     print(f"  Responses API Proxy listening on http://127.0.0.1:{port}")
@@ -358,6 +415,9 @@ if __name__ == "__main__":
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--api-key", required=True)
     parser.add_argument("--model", default="")
+    parser.add_argument("--adapter", default="openai-chat", 
+                        choices=["openai-chat", "anthropic", "google"],
+                        help="Adapter type")
     
     args = parser.parse_args()
-    start_proxy(args.port, args.base_url, args.api_key, args.model)
+    start_proxy(args.port, args.base_url, args.api_key, args.model, args.adapter)

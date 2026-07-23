@@ -357,39 +357,6 @@ def save_provider(name, base_url, api_key, model):
     # provider config from a previous save lingering in the file.
     toml_lines = []
     
-    # Provider-specific wire_api selection
-    # Some providers support Responses API, others need Chat Completions proxy
-    _responses_api_providers = [
-        "https://api.openai.com/v1",           # OpenAI native
-        "https://openrouter.ai/api/v1",         # OpenRouter (supports Responses)
-        "https://api.groq.com/openai/v1",       # Groq (supports Responses)
-        "https://api.cerebras.ai/v1",           # Cerebras
-        "https://api.together.xyz/v1",          # Together
-        "https://api.fireworks.ai/inference/v1", # Fireworks
-        "https://api.deepinfra.com/v1/openai",  # DeepInfra
-    ]
-    
-    _chat_api_providers = [
-        "https://api.anthropic.com",            # Anthropic
-        "https://generativelanguage.googleapis.com", # Google
-        "https://api.kimi.com",                 # Kimi
-        "https://api.xiaomimimo.com",           # Xiaomi
-        "https://api.minimax.io",               # MiniMax
-        "https://api.minimaxi.com",             # MiniMax CN
-        "https://api.z.ai",                     # Zhipu GLM
-        "https://api.moonshot.ai",              # Moonshot
-        "https://api.mistral.ai",               # Mistral
-        "https://api.x.ai",                     # xAI
-        "https://api.deepseek.com",             # DeepSeek
-        "https://dashscope.aliyuncs.com",       # Qwen
-        "https://router.huggingface.co",        # HuggingFace
-        "https://integrate.api.nvidia.com",     # NVIDIA
-        "https://api.sambanova.ai",             # SambaNova
-        "http://localhost:11434",               # Ollama
-        "http://localhost:8000",                # vLLM
-        "http://localhost:1234",                # LM Studio
-    ]
-    
     if base_url != "https://api.openai.com/v1":
         # Codex v0.136+ supports wire_api = "responses" (OpenAI native)
         # and "chat" (OpenAI-compatible, for third-party providers).
@@ -400,17 +367,11 @@ def save_provider(name, base_url, api_key, model):
         toml_lines.append("[model_providers.custom]")
         toml_lines.append(f'name = "{_toml_escape(name or "Custom")}"')
         toml_lines.append(f'base_url = "{_toml_escape(base_url)}"')
-        # Select wire_api based on provider classification
-        use_responses = any(base_url.startswith(p) for p in _responses_api_providers)
-        use_chat = any(base_url.startswith(p) for p in _chat_api_providers)
-        
-        if use_chat:
-            toml_lines.append('wire_api = "chat"')
-        elif use_responses:
-            toml_lines.append('wire_api = "responses"')
-        else:
-            # Default: try Responses API (most compatible)
-            toml_lines.append('wire_api = "responses"')
+        # Codex v0.140+ ONLY supports wire_api = "responses"
+        # For providers that don't support Responses API natively,
+        # they need a proxy layer (like OpenCodex) to convert.
+        # All providers use wire_api = "responses" here.
+        toml_lines.append('wire_api = "responses"')
         toml_lines.append('env_key = "OPENAI_API_KEY"')
     elif model:
         toml_lines.append(f'model = "{_toml_escape(model)}"')

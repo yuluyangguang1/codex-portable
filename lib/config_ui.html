@@ -526,6 +526,27 @@ function mFilter(){
   });
 }
 
+function populateQuickSwitch() {
+  const el = document.getElementById('quickSwitch');
+  const sel = document.getElementById('quickModel');
+  if (!el || !sel) return;
+  const p = STATE.providers_catalog.find(x => x.id === mSel);
+  if (!p || !p.models || p.models.length <= 1) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  sel.innerHTML = p.models.map(m => {
+    return '<option value="' + m + '">' + m + '</option>';
+  }).join('');
+}
+
+function quickSwitchModel() {
+  const sel = document.getElementById('quickModel');
+  if (!sel || !sel.value) return;
+  const modelInput = document.getElementById('m-modelcustom');
+  if (modelInput) modelInput.value = sel.value;
+  mSave();
+  toast('已切换到 ' + sel.value, 'ok');
+}
+
 function mPick(p){
   const isC=p.custom||!p.base_url;
   document.getElementById('m-urllabel').style.display=isC?'block':'none';

@@ -46,7 +46,21 @@ resolve_python3() {
 # 处理 --config 参数（随时打开配置中心）
 if [ "${1:-}" = "--config" ]; then
     CONFIG_SERVER="$SCRIPT_DIR/lib/config_server.py"
-    if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
+
+# Clean up stale port
+cleanup_stale_ports() {
+  local port=$1
+  local pid
+  pid=$(lsof -ti :"$port" 2>/dev/null)
+  if [ -n "$pid" ]; then
+    echo "  [cleanup] Killing stale process on port $port (PID: $pid)"
+    kill -9 "$pid" 2>/dev/null
+    sleep 1
+  fi
+}
+    PY3=$(resolve_python3)
+    if [ -n "$PY3" ] && [ -f "$CONFIG_SERVER" ]; then
+        cleanup_stale_ports 17590
         echo "  打开配置中心 http://127.0.0.1:17590 ..."
         exec "$PY3" "$CONFIG_SERVER"
     else
@@ -273,7 +287,8 @@ if ! has_valid_config; then
     echo "═══════════════════════════════════════════"
     echo ""
     CONFIG_SERVER="$LIB_DIR/config_server.py"
-    if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
+    PY3=$(resolve_python3)
+    if [ -n "$PY3" ] && [ -f "$CONFIG_SERVER" ]; then
         echo "  正在打开配置中心 http://127.0.0.1:17590 ..."
         echo "  按引导选供应商、填 Key、测试、保存，然后点击「启动 Codex CLI」。"
         echo ""
@@ -289,7 +304,8 @@ if ! has_valid_config; then
 else
     # 已有配置，启动配置中心（前台阻塞），方便随时修改 Key
     CONFIG_SERVER="$LIB_DIR/config_server.py"
-    if PY3=$(resolve_python3) && [ -f "$CONFIG_SERVER" ]; then
+    PY3=$(resolve_python3)
+    if [ -n "$PY3" ] && [ -f "$CONFIG_SERVER" ]; then
         echo "  配置中心: http://127.0.0.1:17590"
         echo "  修改 Key 后点击「启动 Codex CLI」即可。"
         "$PY3" "$CONFIG_SERVER"

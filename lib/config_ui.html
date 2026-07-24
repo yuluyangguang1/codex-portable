@@ -541,7 +541,8 @@ function populateQuickSwitch() {
   if (!p || !p.models || p.models.length <= 1) { el.style.display = 'none'; return; }
   el.style.display = 'block';
   sel.innerHTML = p.models.map(m => {
-    return '<option value="' + m + '">' + m + '</option>';
+    const em = m.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return '<option value="' + em + '">' + em + '</option>';
   }).join('');
 }
 

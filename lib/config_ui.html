@@ -548,6 +548,14 @@ function populateQuickSwitch() {
 function quickSwitchModel() {
   const sel = document.getElementById('quickModel');
   if (!sel || !sel.value) return;
+  // Update the visible model select
+  const mainSel = document.getElementById('m-model');
+  if (mainSel) {
+    for (let opt of mainSel.options) {
+      if (opt.value === sel.value) { opt.selected = true; break; }
+    }
+  }
+  // Also update custom input as fallback
   const modelInput = document.getElementById('m-modelcustom');
   if (modelInput) modelInput.value = sel.value;
   mSave();
@@ -555,6 +563,7 @@ function quickSwitchModel() {
 }
 
 function mPick(p){
+  populateQuickSwitch();
   const isC=p.custom||!p.base_url;
   document.getElementById('m-urllabel').style.display=isC?'block':'none';
   document.getElementById('m-url').style.display=isC?'block':'none';

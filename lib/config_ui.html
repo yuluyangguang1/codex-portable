@@ -150,6 +150,11 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 .y-nav-cell a:hover{color:var(--fg)}
 .y-brand{font-family:var(--font-serif);font-size:18px;font-weight:700;letter-spacing:.04em;color:var(--fg);text-transform:none}
 .y-hero{text-align:center;padding:48px 20px 36px;border:1px solid var(--border);border-top:none}
+.y-hero-split{display:flex;flex-direction:row;align-items:center;justify-content:space-between;text-align:left;gap:40px;padding:36px 24px}
+.y-hero-split .hero-title{display:flex;flex-direction:column;gap:8px}
+.y-hero-split .y-display{font-size:2.4rem;line-height:1.1;margin:8px 0 6px}
+.y-hero-split .y-sub{font-size:0.95rem;opacity:.6}
+.y-hero-split .y-term{margin:0;flex:0 0 auto;width:auto}
 .y-hero .y-xs{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--fg-muted);opacity:.7}
 .y-hero .y-display{font-family:var(--font-serif);font-size:3.5rem;font-weight:700;line-height:1.1;letter-spacing:-.01em;mix-blend-mode:plus-lighter;margin:12px 0 8px}
 .y-hero .y-sub{font-size:14px;opacity:.6;line-height:1.6}
@@ -205,11 +210,13 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
   <div class="y-nav-cell"><button class="y-theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="切换主题"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button></div>
 </nav>
 
-<div class="y-hero">
+<div class="y-hero y-hero-split">
+ <div class="hero-title">
   <span class="y-xs">codex cli portable · config</span>
   <h1 class="y-display">codex</h1>
   <p class="y-sub">便携 AI 编程 Agent · 配置模型 · 一键启动</p>
   <span class="y-ver" id="hero-ver">__VERSION__ · 零安装 · 跨平台</span>
+ </div>
   <div class="y-term">
     <div class="y-term-h"><span class="y-td"></span><span class="y-td"></span><span class="y-td"></span><span class="y-term-label">codex</span></div>
     <div class="y-term-b" id="liveTerm"><span class="p">$ ./CodexPortable.command</span>

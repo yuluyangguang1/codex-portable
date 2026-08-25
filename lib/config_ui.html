@@ -149,12 +149,12 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 .y-nav-cell a{color:inherit;text-decoration:none;transition:color .15s}
 .y-nav-cell a:hover{color:var(--fg)}
 .y-brand{font-family:var(--font-serif);font-size:18px;font-weight:700;letter-spacing:.04em;color:var(--fg);text-transform:none}
-.y-hero{text-align:center;padding:48px 20px 36px;border:1px solid var(--border);border-top:none}
-.y-hero-split{display:flex;flex-direction:row;align-items:center;justify-content:space-between;text-align:left;gap:40px;padding:36px 24px}
-.y-hero-split .hero-title{display:flex;flex-direction:column;gap:8px}
-.y-hero-split .y-display{font-size:2.4rem;line-height:1.1;margin:8px 0 6px}
-.y-hero-split .y-sub{font-size:0.95rem;opacity:.6}
-.y-hero-split .y-term{margin:0;flex:0 0 auto;width:auto}
+.y-hero{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;text-align:left;gap:48px;padding:48px 24px 36px;border:none;border-top:none;width:100%;max-width:860px;margin:0 auto}
+.y-hero-text{display:flex;flex-direction:column;align-items:flex-start;gap:10px;flex:1 1 auto;min-width:0}
+.y-hero-text .y-display{font-size:2.4rem;line-height:1.1;margin:8px 0 4px}
+.y-hero-text .y-sub{font-size:0.95rem;opacity:.6;margin:0}
+.y-hero .y-term{margin:0;flex:0 1 480px;width:auto;min-width:260px}
+@media(max-width:760px){.y-hero{flex-direction:column;align-items:center;text-align:center}.y-hero-text{align-items:center;text-align:center}}
 .y-hero .y-xs{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--fg-muted);opacity:.7}
 .y-hero .y-display{font-family:var(--font-serif);font-size:3.5rem;font-weight:700;line-height:1.1;letter-spacing:-.01em;mix-blend-mode:plus-lighter;margin:12px 0 8px}
 .y-hero .y-sub{font-size:14px;opacity:.6;line-height:1.6}
@@ -204,14 +204,14 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 <div class="y-page" role="main" id="main">
 
 <nav class="y-nav">
-  <div class="y-nav-cell"><a href="https://yuai-r.cn/" class="y-brand">yu.ai</a></div>
+  <div class="y-nav-cell"><a href="https://yuai-r.cn/" aria-label="yu.ai 首页" style="display:block;line-height:0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="10.99773 21.210212 41.919409 21.544615" role="img" aria-label="yu.ai" style="display:block;height:26px;width:auto;color:var(--fg)"><path d="M 45.733398 42.738164 L 41.73629 42.74254 L 41.737375285 40.707591021 A 8.837729855 8.837729855 0 0 1 35.033243 42.6925 A 9.740960697 9.740960697 0 0 1 28.51017967 39.031266945 A 9.54129909 9.54129909 0 0 0 30.574483343 34.572309406 A 5.656539538 5.656539538 0 0 0 40.949690312 35.859788125 A 5.731507417 5.731507417 0 1 0 30.36305225 31.811447406 A 20.573482539 20.573482539 0 0 0 29.939626863 34.753760946 A 10.585050681 10.585050681 0 0 1 25.033905315 41.358815686 A 9.119239881 9.119239881 0 0 1 16.170606141 41.798000109 A 10.358690137 10.358690137 0 0 1 10.99773 35.965116 L 15.334254529 35.967567318 A 5.681724582 5.681724582 0 0 0 22.398260797 38.369841547 A 5.794782642 5.794782642 0 0 0 26.224521625 33.410801625 A 11.676690311 11.676690311 0 0 1 30.222128469 25.429408656 A 8.710111368 8.710111368 0 0 1 39.623506 24.123591875 A 11.711448395 11.711448395 0 0 1 45.746694422 34.434553 L 45.733398 42.738164 Z M 30.094526056 21.213756042 A 16.078573443 16.078573443 0 0 1 29.91016646 24.94437708 A 10.408995195 10.408995195 0 0 0 26.508015877 29.654686048 A 9.313114857 9.313114857 0 0 1 19.702203 31.849336 A 9.502361152 9.502361152 0 0 1 11.081539 21.210212 L 15.117581783 21.218789633 A 8.087155192 8.087155192 0 0 0 15.266308403 24.200214629 A 5.433496857 5.433496857 0 0 0 23.713621493 26.905294666 A 5.999413958 5.999413958 0 0 0 26.125265219 21.222406323 L 30.094526056 21.213756042 Z M 45.724922 21.217266 L 45.721641413 29.955435791 A 10.838411147 10.838411147 0 0 0 41.754415729 24.702180989 L 41.733828 21.226262 L 45.724922 21.217266 Z M 52.91713917 40.191867166 A 2.466790171 2.466790171 0 0 1 47.983558828 40.191867166 A 2.466790171 2.466790171 0 0 1 52.91713917 40.191867166 Z" fill="currentColor" fill-rule="nonzero"/></svg></a></div>
   <div class="y-nav-cell"><a href="https://yuai-r.cn/">codex config</a></div>
   <div class="y-nav-cell"><a href="https://github.com/yuluyangguang1/codex-portable" target="_blank">github</a></div>
   <div class="y-nav-cell"><button class="y-theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="切换主题"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button></div>
 </nav>
 
-<div class="y-hero y-hero-split">
- <div class="hero-title">
+<div class="y-hero">
+ <div class="y-hero-text">
   <span class="y-xs">codex cli portable · config</span>
   <h1 class="y-display">codex</h1>
   <p class="y-sub">便携 AI 编程 Agent · 配置模型 · 一键启动</p>

@@ -19,8 +19,11 @@ import sqlite3
 import sys
 import time
 import uuid
+import re
+import threading
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
 import webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
@@ -228,6 +231,143 @@ PROVIDERS = [
      "key_hint": "粘贴中转站 API Key", "note": "填写中转站/自建网关的 base_url",
      "tags": []},
 ]
+
+# ── Model catalog hot-update (ported from openclaw-portable v1.2.0) ──
+# Catalog data lives in two places:
+#   repo-root models-catalog.json          ← maintainer's single source (shipped)
+#   data/.codex-portable/models-catalog.json  ← user-pulled cache (survives updates)
+# Users pull the latest via POST /api/models/refresh, which walks a source
+# list (jsDelivr → raw.githubusercontent → ghproxy mirror) so it works from
+# both global and CN networks. Advanced users can override the source list by
+# writing data/.codex-portable/catalog-sources.json.
+CATALOG_USER = DATA_DIR / ".codex-portable" / "models-catalog.json"
+CATALOG_SHIPPED = PORTABLE_ROOT / "models-catalog.json"
+CATALOG_STALE_MS = 7 * 24 * 3600 * 1000
+CATALOG_FETCH_CAP = 2 * 1024 * 1024  # 2 MB — real catalogs are <300 KB
+DEFAULT_CATALOG_SOURCES = [
+    "https://cdn.jsdelivr.net/gh/yuluyangguang1/codex-portable@main/models-catalog.json",
+    "https://raw.githubusercontent.com/yuluyangguang1/codex-portable/main/models-catalog.json",
+    "https://ghproxy.net/https://raw.githubusercontent.com/yuluyangguang1/codex-portable/main/models-catalog.json",
+]
+
+_catalog_lock = threading.Lock()
+
+
+def _read_catalog_file(file_path):
+    """Parse + structurally validate a catalog file. Returns dict or None."""
+    try:
+        if not os.path.exists(file_path):
+            return None
+        j = json.loads(open(file_path, encoding="utf-8").read())
+        if not isinstance(j, dict) or not isinstance(j.get("providers"), list):
+            return None
+        return j
+    except Exception:
+        return None
+
+
+def _sanitize_catalog(raw):
+    """Normalize + sanitize an untrusted catalog. Returns clean
+    {version, updatedAt, providers} or None if too malformed.
+    Everything the frontend interpolates flows through here first —
+    length caps and charset restrictions keep the render path safe even
+    though the frontend escapes as well (defense in depth)."""
+    lst = raw if isinstance(raw, list) else (
+        raw.get("providers") if isinstance(raw, dict) and isinstance(raw.get("providers"), list) else None)
+    if not lst or len(lst) < 1 or len(lst) > 300:
+        return None
+    seen = set()
+    out = []
+    total_models = 0
+    for item in lst:
+        if not isinstance(item, dict):
+            continue
+        pid = item.get("id")
+        pid = pid.strip()[:64] if isinstance(pid, str) else ""
+        if not pid or re.search(r'[\r\n"\'\\<>/]', pid) or pid in seen:
+            continue
+        seen.add(pid)
+
+        def clean_text(v, mx):
+            return str(v).replace("<", "").replace(">", "").strip()[:mx] if v is not None else ""
+
+        p = {"id": pid,
+             "name": clean_text(item.get("name"), 80) or pid,
+             "models": [], "tags": []}
+        if isinstance(item.get("models"), list):
+            p["models"] = [str(m).strip()[:200] for m in item["models"]
+                           if isinstance(m, str) and m.strip()][:1000]
+        total_models += len(p["models"])
+        if total_models > 20000:
+            return None
+        if isinstance(item.get("tags"), list):
+            p["tags"] = [t for t in item["tags"] if isinstance(t, str)
+                         and re.match(r'^[a-z]{1,12}$', t)][:8]
+        if isinstance(item.get("base"), str):
+            p["base"] = item["base"].strip()[:500]
+        if isinstance(item.get("desc"), str):
+            p["desc"] = clean_text(item.get("desc"), 200)
+        link = item.get("link")
+        if isinstance(link, str) and link.startswith("https://"):
+            p["link"] = link[:300]
+        if item.get("isLocal") is True:
+            p["isLocal"] = True
+        if item.get("isCustom") is True:
+            p["isCustom"] = True
+        out.append(p)
+    # A real catalog has dozens of providers; a handful of valid entries
+    # inside garbage means we parsed the wrong thing — reject.
+    if len(out) < 3:
+        return None
+    version = raw.get("version", "unknown") if isinstance(raw, dict) else "unknown"
+    updated = raw.get("updatedAt") if isinstance(raw, dict) else None
+    return {
+        "version": str(version)[:40],
+        "updatedAt": str(updated)[:40] if updated else datetime.now(timezone.utc).isoformat(),
+        "providers": out,
+    }
+
+
+def _write_user_catalog(catalog, source):
+    os.makedirs(CATALOG_USER.parent, exist_ok=True)
+    to_write = dict(catalog, fetchedAt=datetime.now(timezone.utc).isoformat(), source=source)
+    tmp = str(CATALOG_USER) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(to_write, f, ensure_ascii=False)
+    os.replace(tmp, CATALOG_USER)
+    return to_write
+
+
+def _fetch_catalog_sources():
+    """Walk DEFAULT_CATALOG_SOURCES (or user override); return (catalog, source, errors)."""
+    sources = list(DEFAULT_CATALOG_SOURCES)
+    custom_path = DATA_DIR / ".codex-portable" / "catalog-sources.json"
+    try:
+        custom = json.loads(open(custom_path, encoding="utf-8").read())
+        if isinstance(custom, list) and custom and all(
+                isinstance(u, str) and u.startswith("http") for u in custom):
+            sources = custom[:8]
+    except Exception:
+        pass
+    errors = []
+    for url in sources:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "CodexPortable"})
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                raw = resp.read(MODEL_CATALOG_FETCH_CAP + 1)
+            if len(raw) > MODEL_CATALOG_FETCH_CAP:
+                errors.append(url + " → too large")
+                continue
+            parsed = json.loads(raw.decode("utf-8"))
+            clean = _sanitize_catalog(parsed)
+            if not clean:
+                errors.append(url + " → catalog invalid")
+                continue
+            return clean, url, errors
+        except Exception as e:
+            errors.append(f"{url} → {e}")
+    return None, None, errors
+
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -972,8 +1112,25 @@ class Handler(BaseHTTPRequestHandler):
                 cur = read_current()
                 if cur:
                     cur = {k: v for k, v in cur.items() if k != "api_key"}
+                # Catalog precedence: user cache > shipped file > embedded list
+                cat = _read_catalog_file(CATALOG_USER) or _read_catalog_file(CATALOG_SHIPPED)
+                providers_out = PROVIDERS
+                if cat:
+                    clean = _sanitize_catalog(cat)
+                    if clean:
+                        by_id = {p["id"]: p for p in providers_out}
+                        for cp in clean["providers"]:
+                            base = by_id.get(cp["id"])
+                            if base and cp.get("models"):
+                                base = dict(base); base["models"] = cp["models"]
+                                providers_out = [base if p is base else p for p in providers_out]
+                        for cp in clean["providers"]:
+                            if cp["id"] not in by_id:
+                                providers_out = providers_out + [cp]
                 self._json({
-                    "providers_catalog": PROVIDERS,
+                    "catalog_version": (cat or {}).get("version", ""),
+                    "catalog_updated_at": (cat or {}).get("updatedAt", ""),
+                    "providers_catalog": providers_out,
                     "current": cur,
                     "saved": list_providers(),
                     "has_config": cur is not None,
@@ -1012,7 +1169,30 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": "bad request body"}, 400)
             return
         try:
-            if self.path == "/api/save":
+            if self.path == "/api/models/refresh":
+                with _catalog_lock:
+                    cat, source, errors = _fetch_catalog_sources()
+                if not cat:
+                    self._json({"ok": False, "error": "所有源均失败: " + "; ".join(errors)[:300]})
+                    return
+                written = _write_user_catalog(cat, source)
+                self._json({"ok": True, "updated": True,
+                            "version": written["version"],
+                            "updatedAt": written["updatedAt"],
+                            "source": source,
+                            "providers": written["providers"]})
+            elif self.path == "/api/models/reset":
+                try:
+                    if CATALOG_USER.exists():
+                        os.remove(CATALOG_USER)
+                except OSError:
+                    pass
+                ship = _read_catalog_file(CATALOG_SHIPPED)
+                if ship and _sanitize_catalog(ship):
+                    self._json({"ok": True, "providers": _sanitize_catalog(ship)["providers"]})
+                else:
+                    self._json({"ok": True, "providers": []})
+            elif self.path == "/api/save":
                 save_provider(data.get("name", ""), data.get("base_url", ""),
                               data.get("api_key", ""), data.get("model", ""))
                 self._json({"ok": True})

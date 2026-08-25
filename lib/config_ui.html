@@ -248,7 +248,15 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
         <h2>配置 API 供应商</h2>
         <div class="desc">选择供应商，填写 Key 和模型，Codex CLI 走 OpenAI 协议。</div>
         <div class="tag-bar" id="ob-tags"></div>
-        <div class="search-box"><input id="ob-search" placeholder="搜索供应商名称或备注…" aria-label="搜索供应商" oninput="obFilter()"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="search-box" style="flex:1"><input id="ob-search" placeholder="搜索供应商名称或备注…" aria-label="搜索供应商" oninput="obFilter()"></div>
+          <button id="catRefreshBtn" onclick="refreshModels()" title="从上游拉取最新模型清单"
+            style="display:inline-flex;align-items:center;gap:5px;padding:8px 12px;font-size:.85rem;background:transparent;color:var(--fg-muted);border:1px solid var(--border);border-radius:6px;cursor:pointer;white-space:nowrap">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            刷新模型
+          </button>
+        </div>
+        <div id="catStatus" style="margin-top:4px;font-family:var(--font-mono);font-size:.75rem;color:var(--fg-muted);display:none"></div>
         <div class="provider-grid" id="ob-grid"></div>
         <!-- Key & model form (shown after selecting provider) -->
         <div id="ob-form" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
@@ -394,6 +402,31 @@ function esc(s){const d=document.createElement('div');d.textContent=s;return d.i
 function toast(msg,kind){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(kind||'');setTimeout(()=>t.className='toast',2600)}
 async function api(path,method,body){const tok=(document.querySelector('meta[name="cc-token"]')||{}).content||'';const opt={method:method||'GET',headers:{'Content-Type':'application/json','X-CC-Token':tok}};if(body)opt.body=JSON.stringify(body);const r=await fetch(path,opt);return r.json()}
 
+/* ── Model catalog hot-refresh (ported from openclaw v1.2.0) ── */
+let _catBusy=false;
+async function refreshModels(){
+  if(_catBusy)return;_catBusy=true;
+  const btn=document.getElementById('catRefreshBtn');
+  const st=document.getElementById('catStatus');
+  if(btn){btn.disabled=true;btn.style.opacity='.55'}
+  try{
+    const d=await api('/api/models/refresh','POST',{});
+    if(d.ok&&Array.isArray(d.providers)){
+      STATE.providers_catalog=d.providers;
+      renderMain&&renderMain();
+      if(obSel||mSel){try{renderOnboard?renderOnboard():renderMain()}catch(e){}}
+      if(st){st.textContent='◉ 模型清单 · 已更新至 '+(d.version||d.updatedAt||'最新');st.style.color='var(--emerald,#3ecf8e)'}
+    }else{
+      if(st){st.textContent='◌ '+(d.error||'刷新失败');st.style.color='var(--red,#c84a3e)'}
+    }
+  }catch(e){
+    if(st){st.textContent='◌ 刷新失败：'+(e.message||e);st.style.color='var(--red,#c84a3e)'}
+  }finally{
+    if(btn){btn.disabled=false;btn.style.opacity=''}
+    _catBusy=false;
+  }
+}
+
 /* ── Icon helper ── */
 function providerIcon(pid){
   const iconId=ICON_MAP[pid];
@@ -443,6 +476,8 @@ function fillModels(sel,custom,provider){sel.innerHTML='';const p=STATE.provider
 /* ── Onboarding ── */
 function renderOnboard(){
   document.getElementById('onboard').style.display='block';
+  const cst=document.getElementById('catStatus');
+  if(cst&&STATE&&STATE.catalog_updated_at){cst.style.display='block';cst.textContent='◉ 模型清单 · '+(STATE.catalog_version||'')+' · '+STATE.catalog_updated_at.slice(0,10)}
   document.getElementById('main').style.display='none';
   obSel=null;obTag='all';
   document.getElementById('ob-search').value='';

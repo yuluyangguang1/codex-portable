@@ -25,15 +25,7 @@ preflight_check() {
         warnings=$((warnings + 1))
     fi
 
-    # 2. cc-switch present
-    local ccswitch="$bin_dir/cc-switch"
-    [ "$(uname -s)" = "MINGW"* ] && ccswitch="${ccswitch}.exe"
-    if [ ! -f "$ccswitch" ]; then
-        echo "  [WARN]  cc-switch not found: $ccswitch"
-        warnings=$((warnings + 1))
-    fi
-
-    # 3. Data directory writable
+    # 2. Data directory writable
     if [ ! -d "$data_dir" ]; then
         mkdir -p "$data_dir" 2>/dev/null
     fi

@@ -334,19 +334,21 @@ export CODEX_HOME="$PORTABLE_CODEX"
 # 从 auth.json 读取 API Key 并 export 为环境变量
 # Codex CLI 通过 env_key 指定的环境变量名读取 Key
 AUTH_FILE="$PORTABLE_CODEX/auth.json"
-if [ -f "$AUTH_FILE" ] && command -v python3 &>/dev/null; then
+if [ -f "$AUTH_FILE" ] && PY3=$(resolve_python3); then
     while IFS='=' read -r key val; do
         [ -n "$key" ] && export "$key"="$val"
-    done < <(python3 -c "
-import json, sys
+    done < <(AUTH_FILE="$AUTH_FILE" "$PY3" - <<'PYEOF' 2>/dev/null
+import json, os
 try:
-    with open('$AUTH_FILE') as f:
+    with open(os.environ['AUTH_FILE']) as f:
         d = json.load(f)
     for k, v in d.items():
-        if isinstance(v, str) and v:
+        if isinstance(v, str) and v and '=' not in k:
             print(f'{k}={v}')
-except: pass
-" 2>/dev/null)
+except Exception:
+    pass
+PYEOF
+)
 fi
 
 "$BIN_DIR/codex" "$@"

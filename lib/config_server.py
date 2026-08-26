@@ -830,6 +830,22 @@ def _platform_dir():
     return "linux-x64"
 
 
+def _match_catalog_id(base_url):
+    """Guess the catalog provider id matching a base_url (best effort)."""
+    if not base_url:
+        return None
+    u = base_url.lower().rstrip("/")
+    for p in PROVIDERS:
+        b = (p.get("base_url") or "").lower().rstrip("/")
+        if b and b == u:
+            return p["id"]
+    for p in PROVIDERS:
+        b = (p.get("base_url") or "").lower()
+        if b and b in u or (p["id"] in u and len(p["id"]) > 3):
+            return p["id"]
+    return None
+
+
 def unbind_device():
     removed = 0
     for lf in (DATA_DIR / ".lock", CCS_DIR / ".bind"):
@@ -1062,7 +1078,9 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/api/state":
                 cur = read_current()
                 if cur:
-                    cur = {k: v for k, v in cur.items() if k != "api_key"}
+                    key = cur.pop("api_key", "")
+                    cur["api_key_masked"] = (key[:4] + "…" + key[-4:]) if len(key) > 10 else "…"
+                    cur["provider_hint"] = _match_catalog_id(cur.get("base_url", ""))
                 # Catalog precedence: user cache > shipped file > embedded list
                 cat = _read_catalog_file(CATALOG_USER) or _read_catalog_file(CATALOG_SHIPPED)
                 providers_out = PROVIDERS

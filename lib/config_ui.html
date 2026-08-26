@@ -566,6 +566,25 @@ function renderMain(){
   renderTagBar('m-tags',mTag,(id)=>{mTag=id;mFilter()});
   mFilter();
   renderSavedList();
+  /* 已配置：自动定位当前生效的供应商，让用户清楚在改哪个 Key */
+  const c=STATE.current||{};
+  let target=null;
+  if(c.provider_hint && STATE.providers_catalog.some(p=>p.id===c.provider_hint)){
+    target=c.provider_hint;
+  } else if(c.base_url){
+    const hit=STATE.providers_catalog.find(p=>p.base_url&&p.base_url.toLowerCase().replace(/\/+$/,'')===c.base_url.toLowerCase().replace(/\/+$/,''));
+    if(hit)target=hit.id;
+  }
+  if(target){
+    mSel=target;mFilter();
+    const p=STATE.providers_catalog.find(x=>x.id===target);
+    if(p)mPick(p);
+  }
+  if(c.api_key_masked){
+    const k=document.getElementById('m-key');
+    k.value='';
+    k.placeholder='当前已保存: '+(c.name||'')+' · '+c.api_key_masked+'（粘贴新 Key 覆盖）';
+  }
 }
 
 function mFilter(){

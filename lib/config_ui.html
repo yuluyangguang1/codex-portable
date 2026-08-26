@@ -284,7 +284,7 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
   </div>
 
   <!-- ═══ Main (tabs) ═══ -->
-  <div id="main" style="display:none">
+  <div id="tabs-view" style="display:none">
     <div class="tabs">
       <div class="tab active" data-tab="model">模型</div>
       <div class="tab" data-tab="saved">供应商</div>
@@ -472,7 +472,7 @@ function renderOnboard(){
   document.getElementById('onboard').style.display='block';
   const cst=document.getElementById('catStatus');
   if(cst&&STATE&&STATE.catalog_updated_at){cst.style.display='block';cst.textContent='◉ 模型清单 · '+(STATE.catalog_version||'')+' · '+STATE.catalog_updated_at.slice(0,10)}
-  document.getElementById('main').style.display='none';
+  document.getElementById('tabs-view').style.display='none';
   obSel=null;obTag='all';
   document.getElementById('ob-search').value='';
   document.getElementById('ob-form').style.display='none';
@@ -560,7 +560,7 @@ async function launchCodex(){
 /* ── Main view ── */
 function renderMain(){
   document.getElementById('onboard').style.display='none';
-  document.getElementById('main').style.display='block';
+  document.getElementById('tabs-view').style.display='block';
   mSel=null;mTag='all';
   document.getElementById('m-search').value='';
   renderTagBar('m-tags',mTag,(id)=>{mTag=id;mFilter()});
@@ -748,10 +748,11 @@ load();
 <script>
 (function(){
   var lb=document.getElementById('launch-bar');
+  var tv=document.getElementById('tabs-view');
   var mo=new MutationObserver(function(){
-    lb.style.display=(document.getElementById('main').style.display!=='none')?'block':'none';
+    lb.style.display=(tv.style.display!=='none')?'block':'none';
   });
-  mo.observe(document.getElementById('main'),{attributes:true,attributeFilter:['style']});
+  mo.observe(tv,{attributes:true,attributeFilter:['style']});
 })();
 </script>
 </main>

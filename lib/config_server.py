@@ -243,7 +243,7 @@ PROVIDERS = [
 CATALOG_USER = DATA_DIR / ".codex-portable" / "models-catalog.json"
 CATALOG_SHIPPED = PORTABLE_ROOT / "models-catalog.json"
 CATALOG_STALE_MS = 7 * 24 * 3600 * 1000
-CATALOG_FETCH_CAP = 2 * 1024 * 1024  # 2 MB — real catalogs are <300 KB
+MODEL_CATALOG_FETCH_CAP = 2 * 1024 * 1024  # 2 MB — real catalogs are <300 KB
 DEFAULT_CATALOG_SOURCES = [
     "https://cdn.jsdelivr.net/gh/yuluyangguang1/codex-portable@main/models-catalog.json",
     "https://raw.githubusercontent.com/yuluyangguang1/codex-portable/main/models-catalog.json",
@@ -866,58 +866,7 @@ def reset_config():
     return removed
 
 
-def launch_ccswitch():
-    """Launch the bundled cc-switch GUI as a detached background process.
 
-    The config center is the primary onboarding path, but cc-switch is a
-    full native GUI with extra features. Users who prefer it can start it
-    from here. Returns (ok, message). Never blocks; uses list-form args
-    (no shell=True)."""
-    # Check if already running (#30: prevent duplicate spawns)
-    import subprocess as _sp
-    try:
-        if os.name == "nt":
-            chk = _sp.run(["tasklist", "/fi", "ImageName eq cc-switch.exe"],
-                          capture_output=True, text=True, timeout=5)
-            if "cc-switch.exe" in chk.stdout:
-                return True, "CC Switch 已在运行"
-        else:
-            chk = _sp.run(["pgrep", "-f", "cc-switch"],
-                          capture_output=True, text=True, timeout=5)
-            if chk.returncode == 0:
-                return True, "CC Switch 已在运行"
-    except Exception:
-        pass
-    plat = _platform_dir()
-    exe = "cc-switch.exe" if os.name == "nt" else "cc-switch"
-    ccbin = PORTABLE_ROOT / "bin" / plat / exe
-    if not ccbin.exists():
-        return False, f"未找到 CC Switch 可执行文件：bin/{plat}/{exe}"
-    try:
-        import subprocess
-        kwargs = {
-            "cwd": str(ccbin.parent),
-            "stdout": subprocess.DEVNULL,
-            "stderr": subprocess.DEVNULL,
-            "stdin": subprocess.DEVNULL,
-        }
-        if os.name == "nt":
-            kwargs["creationflags"] = 0x00000008 | 0x00000200
-        else:
-            kwargs["start_new_session"] = True
-            if sys.platform == "darwin":
-                try:
-                    subprocess.run(["xattr", "-dr", "com.apple.quarantine",
-                                    str(ccbin)], timeout=5,
-                                   stdout=subprocess.DEVNULL,
-                                   stderr=subprocess.DEVNULL)
-                    os.chmod(ccbin, 0o755)
-                except Exception:
-                    pass
-        subprocess.Popen([str(ccbin)], **kwargs)
-        return True, "CC Switch 已启动"
-    except Exception as e:
-        return False, f"启动失败: {str(e)[:160]}"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1250,9 +1199,6 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/api/reset":
                 removed = reset_config()
                 self._json({"ok": True, "removed": removed})
-            elif self.path == "/api/launch-ccswitch":
-                ok, msg = launch_ccswitch()
-                self._json({"ok": ok, "message": msg})
             elif self.path == "/api/export":
                 self._json(export_config())
             elif self.path == "/api/shutdown":

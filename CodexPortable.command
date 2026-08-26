@@ -98,7 +98,6 @@ if [ ! -f "$BIN_DIR/codex" ]; then
 fi
 
 chmod +x "$BIN_DIR/codex" 2>/dev/null
-[ -f "$BIN_DIR/cc-switch" ] && chmod +x "$BIN_DIR/cc-switch" 2>/dev/null
 
 # Pre-flight self-check
 LIB_DIR="$SCRIPT_DIR/lib"
@@ -112,7 +111,6 @@ fi
 
 # macOS: 移除 quarantine 属性（Gatekeeper）
 xattr -dr com.apple.quarantine "$BIN_DIR/codex" 2>/dev/null
-[ -f "$BIN_DIR/cc-switch" ] && xattr -dr com.apple.quarantine "$BIN_DIR/cc-switch" 2>/dev/null
 
 # ═══════════════════════════════════════════
 # 单实例锁（原子 mkdir 持锁，避免 [-f] 检查 + 写 PID 的 TOCTOU 竞态）

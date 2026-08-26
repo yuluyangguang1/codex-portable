@@ -71,8 +71,6 @@ def post(path,body,t=True):
         try: return json.loads(e.read()),e.code
         except Exception: return {'error':e.reason},e.code
 
-lc,code=post('/api/launch-ccswitch',{})
-check("launch-ccswitch endpoint", 'ok' in lc and 'message' in lc)
 _,c=post('/api/save',{'name':'x','base_url':'https://x.com','api_key':'k'*8,'model':''},t=False)
 check("CSRF blocks no-token", c==403)
 st=json.loads(urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:17593/api/state',headers=H)).read())

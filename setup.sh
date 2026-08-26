@@ -83,34 +83,8 @@ else
     esac
 fi
 
-# Download cc-switch GUI from our auxiliary release
 echo ""
-echo "  [info] Fetching cc-switch GUI from cc-switch-assets release..."
-CCS_BASE="https://github.com/yuluyangguang1/codex-portable/releases/download/cc-switch-assets"
-
-ccs_download() {
-    local target="$1" asset="$2"
-    [ -d "$(dirname "$target")" ] || return 0
-    echo "  [download] $asset → $target"
-    curl -fsSL -o "$target" "${CCS_BASE}/${asset}"
-    [ "${target##*.}" != "exe" ] && chmod +x "$target"
-}
-
-if [ "$ALL" = "1" ]; then
-    ccs_download bin/macos-arm64/cc-switch     cc-switch-macos
-    ccs_download bin/macos-x64/cc-switch       cc-switch-macos
-    ccs_download bin/linux-x64/cc-switch       cc-switch-linux-x64
-    ccs_download bin/windows-x64/cc-switch.exe cc-switch-windows-x64.exe
-else
-    case "$OS-$ARCH" in
-        Darwin-arm64)   ccs_download bin/macos-arm64/cc-switch cc-switch-macos ;;
-        Darwin-x86_64)  ccs_download bin/macos-x64/cc-switch   cc-switch-macos ;;
-        Linux-x86_64)   ccs_download bin/linux-x64/cc-switch   cc-switch-linux-x64 ;;
-    esac
-fi
-
-echo ""
-echo "  [done] Codex binaries + cc-switch GUI ready."
+echo "  [done] Codex binaries ready."
 echo ""
 echo "  Launch with:"
 case "$OS" in

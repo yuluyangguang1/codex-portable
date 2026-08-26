@@ -351,12 +351,6 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
         <div class="btns"><button class="danger" onclick="opsReset()">重置配置</button></div>
         <div class="msg" id="reset-msg"></div>
       </div>
-      <div class="section" style="border-top:1px solid var(--border);padding-top:20px">
-        <h2>CC Switch GUI</h2>
-        <div class="desc">原生供应商管理工具（故障转移、多应用切换等高级功能）。</div>
-        <div class="hint" style="margin-bottom:14px;line-height:1.7">配置中心已经能完成日常的供应商增删改与切换，和 CC Switch 共用同一份配置库（data/.cc-switch/cc-switch.db）。如果你想用 CC Switch 的原生界面管理更多高级选项，可以点下面的按钮单独启动它，启动后两边的修改会互相同步。</div>
-        <div class="btns"><button onclick="opsLaunchCcswitch()" id="ccswitch-btn">启动 CC Switch</button></div>
-      </div>
     </div>
     <div class="panel" data-panel="data">
       <div class="section">
@@ -692,7 +686,6 @@ async function opsReset(){
   }
 }
 
-async function opsLaunchCcswitch(){const b=document.getElementById('ccswitch-btn');b.disabled=true;opsMsg('正在启动 CC Switch…','wait');try{const r=await api('/api/launch-ccswitch','POST',{});if(r.ok){toast('CC Switch 已启动','ok');opsMsg('CC Switch 已在后台启动，请查看新打开的窗口。两边共用同一份配置库，修改会互相同步。','ok')}else{opsMsg('启动失败: '+(r.message||r.error||'未知错误'),'err')}}catch(e){opsMsg('启动失败: '+e,'err')}b.disabled=false}
 
 /* ── Tabs ── */
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.querySelector('.panel[data-panel="'+t.dataset.tab+'"]').classList.add('active')});

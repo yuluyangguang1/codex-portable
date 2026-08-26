@@ -54,7 +54,7 @@ codex-portable/
     linux-x64/codex
     windows-x64/codex.exe
   data/                    用户数据（gitignore）
-    .cc-switch/            CC Switch 数据库
+    .cc-switch/            配置库（SQLite，配置中心使用）
     .codex/                Codex CLI 配置和历史（auth.json + config.toml）
     .lock                  设备绑定锁
   lib/
@@ -128,7 +128,7 @@ CodexPortable.bat --unlock
 
 ## 构建
 
-CI 自动从 [openai/codex releases](https://github.com/openai/codex/releases) 下载预编译二进制，从本仓库的 `cc-switch-assets` release 下载 cc-switch GUI。
+CI 自动从 [openai/codex releases](https://github.com/openai/codex/releases) 下载预编译二进制。
 
 手动触发构建：
 ```
@@ -147,14 +147,13 @@ bash setup.sh             # 当前平台
 bash setup.sh --all       # 所有平台（U 盘版）
 ```
 
-会自动下载 codex 二进制 + cc-switch GUI 到对应的 `bin/` 目录。
+会自动下载 codex 二进制到对应的 `bin/` 目录。
 
 ---
 
 ## 上游项目
 
 - **Codex CLI**：[openai/codex](https://github.com/openai/codex) — Rust 编写的终端编程 Agent，MIT 协议
-- **CC Switch**：[farion1231/cc-switch](https://github.com/farion1231/cc-switch) — 跨平台 AI CLI 配置管理工具，原生支持 Codex
 - **姊妹项目**：[claude-portable](https://github.com/yuluyangguang1/claude-portable) · [openclaw-portable](https://github.com/yuluyangguang1/openclaw-portable) · [hermes-portable](https://github.com/yuluyangguang1/hermes-portable)
 
 Portable 版本的工作：

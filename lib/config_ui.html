@@ -105,16 +105,16 @@ input:focus,select:focus{border-color:var(--accent)}
 input::placeholder{color:var(--fg-muted);opacity:.5}
 select{cursor:pointer}select option{background:var(--bg);color:var(--fg)}
 .provider-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-bottom:none;margin-bottom:14px}
-.pcard{padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px}
+.pcard{padding:16px 10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:.15s;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
 .pcard:nth-child(4n){border-right:none}
 .pcard:hover{background:var(--hover)}
 .pcard.sel{background:var(--accent-soft);box-shadow:inset 2px 0 0 var(--accent)}
 .pcard .picon{width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--muted);color:var(--fg);font-family:var(--font-serif);font-size:11px;font-weight:700;overflow:hidden}
 .pcard .picon svg{width:18px;height:18px}
-.pcard .pinfo{flex:1;min-width:0}
-.pcard .pn{font-family:var(--font-serif);font-size:13px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pcard .pnote{font-family:var(--font-mono);font-size:9px;color:var(--fg-muted);margin-top:3px;letter-spacing:.02em;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pcard .ptags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.pcard .pinfo{flex:1;min-width:0;width:100%}
+.pcard .pn{font-family:var(--font-serif);font-size:13px;font-weight:600;color:var(--fg);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard .pnote{font-family:var(--font-mono);font-size:9px;color:var(--fg-muted);margin-top:3px;letter-spacing:.02em;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pcard .ptags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;justify-content:center}
 .pcard .ptag{font-family:var(--font-mono);font-size:10px;padding:1px 5px;border:1px solid var(--border);color:var(--fg-muted);letter-spacing:.06em;text-transform:uppercase;opacity:.6}
 button{padding:11px 22px;background:transparent;border:1px solid var(--border-strong);color:var(--fg);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:.15s}
 button:hover{background:var(--accent);color:var(--bg)}

@@ -104,10 +104,9 @@ input,select{width:100%;padding:9px 12px;background:transparent;border:1px solid
 input:focus,select:focus{border-color:var(--accent)}
 input::placeholder{color:var(--fg-muted);opacity:.5}
 select{cursor:pointer}select option{background:var(--bg);color:var(--fg)}
-.provider-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);margin-bottom:14px}
+.provider-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-bottom:none;margin-bottom:14px}
 .pcard{padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px}
 .pcard:nth-child(4n){border-right:none}
-.pcard:nth-last-child(-n+4){border-bottom:none}
 .pcard:hover{background:var(--hover)}
 .pcard.sel{background:var(--accent-soft);box-shadow:inset 2px 0 0 var(--accent)}
 .pcard .picon{width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--muted);color:var(--fg);font-family:var(--font-serif);font-size:11px;font-weight:700;overflow:hidden}
@@ -166,9 +165,8 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 @media(max-width:820px){.provider-grid{grid-template-columns:repeat(2,1fr)}
   .pcard:nth-child(4n){border-right:1px solid var(--border)}
   .pcard:nth-child(2n){border-right:none}
-  .pcard:nth-last-child(-n+4){border-bottom:1px solid var(--border)}
   .pcard:nth-last-child(-n+2){border-bottom:none}}
-@media(max-width:480px){.provider-grid{grid-template-columns:1fr}.pcard{border-right:none}.pcard:nth-last-child(-n+1){border-bottom:none}.steps{flex-direction:column}.step{border-right:none;border-bottom:1px solid var(--border)}.step:last-child{border-bottom:none}}
+@media(max-width:480px){.provider-grid{grid-template-columns:1fr}.pcard{border-right:none}.pcard:nth-child(4n){border-right:none}.steps{flex-direction:column}.step{border-right:none;border-bottom:1px solid var(--border)}.step:last-child{border-bottom:none}}
 /* yuai nav + hero */
 .y-page{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:0 24px}
 .y-nav{display:flex;border:1px solid var(--border);border-top:none}

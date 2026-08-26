@@ -78,9 +78,16 @@ jobs:
           mkdir -p data/.cc-switch data/.codex
 
           # Start config server in background
-          python3 lib/config_server.py &
+          python3 -u lib/config_server.py &
           SERVER_PID=$!
-          sleep 2
+
+          # Wait for port to be ready (max 15s) instead of fixed sleep
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null --max-time 1 http://127.0.0.1:17590/api/heartbeat; then
+              break
+            fi
+            sleep 0.5
+          done
 
           # Test heartbeat
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:17590/api/heartbeat)

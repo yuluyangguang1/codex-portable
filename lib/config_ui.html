@@ -104,17 +104,17 @@ input,select{width:100%;padding:9px 12px;background:transparent;border:1px solid
 input:focus,select:focus{border-color:var(--accent)}
 input::placeholder{color:var(--fg-muted);opacity:.5}
 select{cursor:pointer}select option{background:var(--bg);color:var(--fg)}
-.provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);margin-bottom:14px}
-.pcard{padding:14px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px}
-.pcard:nth-child(2n){border-right:none}
-.pcard:nth-last-child(-n+2){border-bottom:none}
+.provider-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);margin-bottom:14px}
+.pcard{padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px}
+.pcard:nth-child(4n){border-right:none}
+.pcard:nth-last-child(-n+4){border-bottom:none}
 .pcard:hover{background:var(--hover)}
 .pcard.sel{background:var(--accent-soft);box-shadow:inset 2px 0 0 var(--accent)}
-.pcard .picon{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--muted);color:var(--fg);font-family:var(--font-serif);font-size:13px;font-weight:700;overflow:hidden}
+.pcard .picon{width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--muted);color:var(--fg);font-family:var(--font-serif);font-size:11px;font-weight:700;overflow:hidden}
 .pcard .picon svg{width:18px;height:18px}
 .pcard .pinfo{flex:1;min-width:0}
-.pcard .pn{font-family:var(--font-serif);font-size:14px;font-weight:600;color:var(--fg)}
-.pcard .pnote{font-family:var(--font-mono);font-size:10px;color:var(--fg-muted);margin-top:3px;letter-spacing:.03em;opacity:.6}
+.pcard .pn{font-family:var(--font-serif);font-size:13px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard .pnote{font-family:var(--font-mono);font-size:9px;color:var(--fg-muted);margin-top:3px;letter-spacing:.02em;opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pcard .ptags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
 .pcard .ptag{font-family:var(--font-mono);font-size:10px;padding:1px 5px;border:1px solid var(--border);color:var(--fg-muted);letter-spacing:.06em;text-transform:uppercase;opacity:.6}
 button{padding:11px 22px;background:transparent;border:1px solid var(--border-strong);color:var(--fg);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:.15s}
@@ -163,7 +163,12 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 .search-box input:focus{border-color:var(--accent)}
 .search-box{position:relative}
 .search-box::before{content:'⌕';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--fg-muted);font-size:14px;pointer-events:none;z-index:1}
-@media(max-width:600px){.provider-grid{grid-template-columns:1fr}.pcard{border-right:none}.pcard:nth-last-child(-n+1){border-bottom:none}.steps{flex-direction:column}.step{border-right:none;border-bottom:1px solid var(--border)}.step:last-child{border-bottom:none}}
+@media(max-width:820px){.provider-grid{grid-template-columns:repeat(2,1fr)}
+  .pcard:nth-child(4n){border-right:1px solid var(--border)}
+  .pcard:nth-child(2n){border-right:none}
+  .pcard:nth-last-child(-n+4){border-bottom:1px solid var(--border)}
+  .pcard:nth-last-child(-n+2){border-bottom:none}}
+@media(max-width:480px){.provider-grid{grid-template-columns:1fr}.pcard{border-right:none}.pcard:nth-last-child(-n+1){border-bottom:none}.steps{flex-direction:column}.step{border-right:none;border-bottom:1px solid var(--border)}.step:last-child{border-bottom:none}}
 /* yuai nav + hero */
 .y-page{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:0 24px}
 .y-nav{display:flex;border:1px solid var(--border);border-top:none}

@@ -9,33 +9,56 @@
 <meta name="cc-token" content="__CC_TOKEN__">
 <style>
 :root{
-  /* Design Tokens */
+  /* Design Tokens — 对齐 yuai-site v3 (shared.css) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 18px;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  /* v3 base channels */
+  --bg-base:21 14 7;             /* 纸墨黑 */
+  --mid-base:237 230 216;
+  --dim-base:139 128 111;
+  --accent-base:242 99 78;       /* 朱砂 */
+  --warn-base:168 116 16;
+  --danger-base:178 58 40;
+  --radius-sm: 2px;              /* v3 用小圆角/直角 */
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
   --duration-fast: 150ms;
   --duration-normal: 200ms;
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --bg:#170d02;--card:#1a1208;--secondary:#1e1508;--muted:#1c1409;
-  --fg:#f5f5f5;--fg-muted:#9a968e;--border:#f5f5f526;--accent:#f5f5f5;
-  --emerald:oklch(0.765 0.177 163.223);--emerald-dim:oklch(0.696 0.17 162.48);
-  --warning:#ffbd38;--success:#4ade80;--destructive:#fb2c36;
+  --ease-out: cubic-bezier(.2,.6,.2,1);
+  --ease:cubic-bezier(.2,.6,.2,1);
+  --bg:rgb(var(--bg-base));
+  --card:rgb(var(--bg-base) / .55);
+  --secondary:rgb(var(--mid-base) / .05);
+  --muted:rgb(var(--mid-base) / .08);
+  --fg:rgb(var(--mid-base));
+  --fg-muted:rgb(var(--dim-base));
+  --border:rgb(var(--mid-base) / .12);
+  --border-strong:rgb(var(--mid-base) / .26);
+  --hover:rgb(var(--mid-base) / .05);
+  --hover-strong:rgb(var(--mid-base) / .09);
+  --accent:rgb(var(--accent-base));
+  --accent-soft:rgb(var(--accent-base) / .07);
+  --code-bg:rgb(var(--mid-base) / .06);
+  --emerald:#3ecf8e;--emerald-dim:#2ea56f;
+  --warning:#e8b64c;--success:#3ecf8e;--destructive:#c84a3e;
   --font-sans:system-ui,-apple-system,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
-  --font-serif:'LXGW WenKai',Georgia,'Noto Serif SC','Source Han Serif SC',serif;
-  --font-mono:'Courier New','Menlo',monospace;
+  --font-serif:'LXGW WenKai','LXGW WenKai Local',Georgia,'Noto Serif SC','Source Han Serif SC',serif;
+  --font-mono:ui-monospace,'SF Mono','Cascadia Code',Menlo,Consolas,'Courier New',monospace;
 }
-[data-theme="light"]{--bg:#f5f0e8;--card:#f5f0e8;--secondary:#f5f0e8;--muted:#c8c4bb;--fg:#3d3a35;--fg-muted:#7a7670;--border:rgba(61,58,53,0.14);--accent:#d4e600;--emerald:#d4e600;--emerald-dim:#028a60}
-@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f5f0e8;--card:#f5f0e8;--secondary:#f5f0e8;--muted:#c8c4bb;--fg:#3d3a35;--fg-muted:#7a7670;--border:rgba(61,58,53,0.14);--accent:#d4e600;--emerald:#d4e600;--emerald-dim:#028a60}}
+[data-theme="light"]{--bg-base:246 243 236;--mid-base:33 27 19;--dim-base:128 113 94;--accent-base:187 52 36;--warn-base:168 116 16;--danger-base:178 58 40;
+  --bg:rgb(var(--bg-base));--card:rgb(var(--bg-base) / .55);--secondary:rgb(var(--mid-base) / .05);--muted:rgb(var(--mid-base) / .08);
+  --fg:rgb(var(--mid-base));--fg-muted:rgb(var(--dim-base));--border:rgb(var(--mid-base) / .14);--border-strong:rgb(var(--mid-base) / .28);
+  --hover:rgb(var(--mid-base) / .04);--hover-strong:rgb(var(--mid-base) / .07);--accent:rgb(var(--accent-base));--accent-soft:rgb(var(--accent-base) / .06);--code-bg:rgb(var(--mid-base) / .06)}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg-base:246 243 236;--mid-base:33 27 19;--dim-base:128 113 94;--accent-base:187 52 36;--warn-base:168 116 16;--danger-base:178 58 40;
+  --bg:rgb(var(--bg-base));--card:rgb(var(--bg-base) / .55);--secondary:rgb(var(--mid-base) / .05);--muted:rgb(var(--mid-base) / .08);
+  --fg:rgb(var(--mid-base));--fg-muted:rgb(var(--dim-base));--border:rgb(var(--mid-base) / .14);--border-strong:rgb(var(--mid-base) / .28);
+  --hover:rgb(var(--mid-base) / .04);--hover-strong:rgb(var(--mid-base) / .07);--accent:rgb(var(--accent-base));--accent-soft:rgb(var(--accent-base) / .06);--code-bg:rgb(var(--mid-base) / .06)}}
+
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--font-sans);background:var(--bg);color:var(--fg);min-height:100vh;-webkit-font-smoothing:antialiased;position:relative}
 /* Hermes/OpenClaw style background layers */
@@ -67,11 +90,11 @@ h1{font-family:var(--font-serif);font-size:28px;font-weight:700;letter-spacing:.
 .dot{width:8px;height:8px;flex-shrink:0}
 .dot.on{background:var(--emerald);box-shadow:0 0 8px var(--emerald)}
 .dot.off{background:var(--destructive)}
-.tabs{display:flex;gap:0;margin:24px 0 18px;border:1px solid var(--border)}
-.tab{flex:1;padding:12px 0;text-align:center;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;color:var(--fg-muted);border-right:1px solid var(--border);transition:.15s}
+.tabs{display:flex;gap:18px;margin:28px 0 0;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.tab{flex:none;padding:4px 2px;text-align:left;font-family:var(--font-mono);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;color:var(--fg-muted);border-bottom:2px solid transparent;margin-bottom:-13px;transition:color .2s var(--ease),border-color .2s var(--ease)}
 .tab:last-child{border-right:none}
 .tab:hover{color:var(--fg);background:rgba(245,240,232,.03)}
-.tab.active{color:var(--accent);background:rgba(245,240,232,.05)}
+.tab.active{color:var(--fg);border-bottom-color:var(--accent)}
 .panel{display:none}.panel.active{display:block}
 .section{margin-bottom:20px}
 .section h2{font-family:var(--font-serif);font-size:1.4rem;font-weight:700;margin-bottom:4px;mix-blend-mode:plus-lighter}
@@ -85,8 +108,8 @@ select{cursor:pointer}select option{background:var(--bg);color:var(--fg)}
 .pcard{padding:14px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:.15s;display:flex;align-items:flex-start;gap:12px}
 .pcard:nth-child(2n){border-right:none}
 .pcard:nth-last-child(-n+2){border-bottom:none}
-.pcard:hover{background:rgba(245,240,232,.03);border-color:var(--accent)}
-.pcard.sel{background:rgba(237,255,69,.04);border-color:var(--accent)}
+.pcard:hover{background:var(--hover)}
+.pcard.sel{background:var(--accent-soft);box-shadow:inset 2px 0 0 var(--accent)}
 .pcard .picon{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);background:var(--muted);color:var(--fg);font-family:var(--font-serif);font-size:13px;font-weight:700;overflow:hidden}
 .pcard .picon svg{width:18px;height:18px}
 .pcard .pinfo{flex:1;min-width:0}
@@ -94,7 +117,7 @@ select{cursor:pointer}select option{background:var(--bg);color:var(--fg)}
 .pcard .pnote{font-family:var(--font-mono);font-size:10px;color:var(--fg-muted);margin-top:3px;letter-spacing:.03em;opacity:.6}
 .pcard .ptags{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
 .pcard .ptag{font-family:var(--font-mono);font-size:10px;padding:1px 5px;border:1px solid var(--border);color:var(--fg-muted);letter-spacing:.06em;text-transform:uppercase;opacity:.6}
-button{padding:11px 22px;background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:.15s}
+button{padding:11px 22px;background:transparent;border:1px solid var(--border-strong);color:var(--fg);font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:.15s}
 button:hover{background:var(--accent);color:var(--bg)}
 button:disabled{opacity:.4;cursor:not-allowed;border-color:var(--border);color:var(--fg-muted)}
 button:disabled:hover{background:transparent;color:var(--fg-muted)}
@@ -151,7 +174,7 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 .y-brand{font-family:var(--font-serif);font-size:18px;font-weight:700;letter-spacing:.04em;color:var(--fg);text-transform:none}
 .y-hero{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;text-align:left;gap:48px;padding:48px 24px 36px;border:none;border-top:none;width:100%;max-width:860px;margin:0 auto}
 .y-hero-text{display:flex;flex-direction:column;align-items:flex-start;gap:10px;flex:1 1 auto;min-width:0}
-.y-hero-text .y-display{font-size:2.4rem;line-height:1.1;margin:8px 0 4px}
+.y-hero-text .y-display{font-family:var(--font-serif);font-weight:700;font-size:clamp(2rem,4vw,2.6rem);line-height:1.2;letter-spacing:.02em;margin:8px 0 4px}
 .y-hero-text .y-sub{font-size:0.95rem;opacity:.6;margin:0}
 .y-hero .y-term{margin:0;flex:0 1 480px;width:auto;min-width:260px}
 @media(max-width:760px){.y-hero{flex-direction:column;align-items:center;text-align:center}.y-hero-text{align-items:center;text-align:center}}
@@ -192,19 +215,29 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+@keyframes scrollUnfurl{from{clip-path:inset(0 45% 0 45%);opacity:0}to{clip-path:inset(0 0 0 0);opacity:1}}
+.unfurl{opacity:0;animation:scrollUnfurl .9s cubic-bezier(.2,.6,.2,1) forwards}
+@media(prefers-reduced-motion:reduce){.unfurl{animation:none;opacity:1}}
 </style>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css" onerror="this.removeAttribute('href')" />
+<style>
+/* 本地字体优先(便携包 lib/fonts/), CDN 仅作在线增强 */
+@font-face{font-family:'LXGW WenKai Local';src:local('LXGW WenKai'),url('fonts/LXGWWenKai-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+</style>
 </head>
 <body>
 <div class="bg-i" aria-hidden="true"><img alt="" src="https://yuai-r.cn/egret-ink.jpg" width="1920" height="1080" loading="lazy" decoding="async" onerror="this.parentNode.style.display='none'"></div>
 <div class="bg-n" aria-hidden="true"></div>
+<div class="mount-frame" aria-hidden="true"></div>
+<div class="colophon" aria-hidden="true">方盒 · 编程无界</div>
 <div class="bg-g" aria-hidden="true"></div>
 <main role="main" style="padding-bottom:80px">
 <a href="#main" class="skip-link">跳到主要内容</a>
 <div class="y-page" role="main" id="main">
 
 <nav class="y-nav">
-  <div class="y-nav-cell"><a href="https://yuai-r.cn/" aria-label="yu.ai 首页" style="display:block;line-height:0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="10.99773 21.210212 41.919409 21.544615" role="img" aria-label="yu.ai" style="display:block;height:26px;width:auto;color:var(--fg)"><path d="M 45.733398 42.738164 L 41.73629 42.74254 L 41.737375285 40.707591021 A 8.837729855 8.837729855 0 0 1 35.033243 42.6925 A 9.740960697 9.740960697 0 0 1 28.51017967 39.031266945 A 9.54129909 9.54129909 0 0 0 30.574483343 34.572309406 A 5.656539538 5.656539538 0 0 0 40.949690312 35.859788125 A 5.731507417 5.731507417 0 1 0 30.36305225 31.811447406 A 20.573482539 20.573482539 0 0 0 29.939626863 34.753760946 A 10.585050681 10.585050681 0 0 1 25.033905315 41.358815686 A 9.119239881 9.119239881 0 0 1 16.170606141 41.798000109 A 10.358690137 10.358690137 0 0 1 10.99773 35.965116 L 15.334254529 35.967567318 A 5.681724582 5.681724582 0 0 0 22.398260797 38.369841547 A 5.794782642 5.794782642 0 0 0 26.224521625 33.410801625 A 11.676690311 11.676690311 0 0 1 30.222128469 25.429408656 A 8.710111368 8.710111368 0 0 1 39.623506 24.123591875 A 11.711448395 11.711448395 0 0 1 45.746694422 34.434553 L 45.733398 42.738164 Z M 30.094526056 21.213756042 A 16.078573443 16.078573443 0 0 1 29.91016646 24.94437708 A 10.408995195 10.408995195 0 0 0 26.508015877 29.654686048 A 9.313114857 9.313114857 0 0 1 19.702203 31.849336 A 9.502361152 9.502361152 0 0 1 11.081539 21.210212 L 15.117581783 21.218789633 A 8.087155192 8.087155192 0 0 0 15.266308403 24.200214629 A 5.433496857 5.433496857 0 0 0 23.713621493 26.905294666 A 5.999413958 5.999413958 0 0 0 26.125265219 21.222406323 L 30.094526056 21.213756042 Z M 45.724922 21.217266 L 45.721641413 29.955435791 A 10.838411147 10.838411147 0 0 0 41.754415729 24.702180989 L 41.733828 21.226262 L 45.724922 21.217266 Z M 52.91713917 40.191867166 A 2.466790171 2.466790171 0 0 1 47.983558828 40.191867166 A 2.466790171 2.466790171 0 0 1 52.91713917 40.191867166 Z" fill="currentColor" fill-rule="nonzero"/></svg></a></div>
+  <div class="y-nav-cell"><a href="https://yuai-r.cn/" aria-label="yu.ai 首页" style="display:block;line-height:0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="10.99773 21.210212 41.919409 21.544615" role="img" aria-label="yu.ai" style="display:block;height:26px;width:auto;color:var(--fg)"><path d="M 45.733398 42.738164 L 41.73629 42.74254 L 41.737375285 40.707591021 A 8.837729855 8.837729855 0 0 1 35.033243 42.6925 A 9.740960697 9.740960697 0 0 1 28.51017967 39.031266945 A 9.54129909 9.54129909 0 0 0 30.574483343 34.572309406 A 5.656539538 5.656539538 0 0 0 40.949690312 35.859788125 A 5.731507417 5.731507417 0 1 0 30.36305225 31.811447406 A 20.573482539 20.573482539 0 0 0 29.939626863 34.753760946 A 10.585050681 10.585050681 0 0 1 25.033905315 41.358815686 A 9.119239881 9.119239881 0 0 1 16.170606141 41.798000109 A 10.358690137 10.358690137 0 0 1 10.99773 35.965116 L 15.334254529 35.967567318 A 5.681724582 5.681724582 0 0 0 22.398260797 38.369841547 A 5.794782642 5.794782642 0 0 0 26.224521625 33.410801625 A 11.676690311 11.676690311 0 0 1 30.222128469 25.429408656 A 8.710111368 8.710111368 0 0 1 39.623506 24.123591875 A 11.711448395 11.711448395 0 0 1 45.746694422 34.434553 L 45.733398 42.738164 Z M 30.094526056 21.213756042 A 16.078573443 16.078573443 0 0 1 29.91016646 24.94437708 A 10.408995195 10.408995195 0 0 0 26.508015877 29.654686048 A 9.313114857 9.313114857 0 0 1 19.702203 31.849336 A 9.502361152 9.502361152 0 0 1 11.081539 21.210212 L 15.117581783 21.218789633 A 8.087155192 8.087155192 0 0 0 15.266308403 24.200214629 A 5.433496857 5.433496857 0 0 0 23.713621493 26.905294666 A 5.999413958 5.999413958 0 0 0 26.125265219 21.222406323 L 30.094526056 21.213756042 Z M 45.724922 21.217266 L 45.721641413 29.955435791 A 10.838411147 10.838411147 0 0 0 41.754415729 24.702180989 L 41.733828 21.226262 L 45.724922 21.217266 Z M 52.91713917 40.191867166 A 2.466790171 2.466790171 0 0 1 47.983558828 40.191867166 A 2.466790171 2.466790171 0 0 1 52.91713917 40.191867166 Z" fill="currentColor" fill-rule="nonzero"/><circle fill="var(--accent)" cx="50.450349" cy="40.191867" r="2.466790"/></svg></a></div>
   <div class="y-nav-cell"><a href="https://yuai-r.cn/">codex config</a></div>
   <div class="y-nav-cell"><a href="https://yuai-r.cn/keys/?from=codex">领 API Key</a></div>
   <div class="y-nav-cell"><button class="y-theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="切换主题"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button></div>
@@ -213,7 +246,7 @@ code{font-family:var(--font-mono);border:1px solid var(--border);padding:1px 6px
 <div class="y-hero">
  <div class="y-hero-text">
   <span class="y-xs">codex cli portable · config</span>
-  <h1 class="y-display">codex</h1>
+  <h1 class="y-display unfurl">codex</h1>
   <p class="y-sub">便携 AI 编程 Agent · 配置模型 · 一键启动</p>
   <span class="y-ver" id="hero-ver">__VERSION__ · 零安装 · 跨平台</span>
  </div>
@@ -757,4 +790,10 @@ load();
 </script>
 </main>
 </body>
-</html>
+</html.mount-frame{position:fixed;inset:8px;z-index:300;pointer-events:none;border:1px solid rgb(var(--mid-base) / .14)}
+.mount-frame::before{content:"";position:absolute;top:-1px;left:-1px;width:14px;height:14px;border-top:2px solid var(--accent);border-left:2px solid var(--accent);opacity:.65}
+.mount-frame::after{content:"";position:absolute;bottom:-1px;right:-1px;width:14px;height:14px;border-bottom:2px solid var(--accent);border-right:2px solid var(--accent);opacity:.65}
+@media(max-width:640px){.mount-frame{display:none}}
+.colophon{position:fixed;right:16px;top:50%;transform:translateY(-50%);writing-mode:vertical-rl;font-family:var(--font-serif);font-size:.7rem;letter-spacing:.4rem;opacity:.15;z-index:100;pointer-events:none}
+@media(max-width:768px){.colophon{display:none}}
+>

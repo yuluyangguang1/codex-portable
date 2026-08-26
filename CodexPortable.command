@@ -99,6 +99,10 @@ fi
 
 chmod +x "$BIN_DIR/codex" 2>/dev/null
 
+# macOS: 移除 quarantine 属性（Gatekeeper）— 必须在 preflight 之前，
+# 否则首次运行时 --version 测试因隔离属性跑不起来，误报 "Binary won't run"
+xattr -dr com.apple.quarantine "$BIN_DIR/codex" 2>/dev/null
+
 # Pre-flight self-check
 LIB_DIR="$SCRIPT_DIR/lib"
 if [ -f "$LIB_DIR/preflight.sh" ]; then
@@ -109,8 +113,6 @@ if [ -f "$LIB_DIR/preflight.sh" ]; then
     }
 fi
 
-# macOS: 移除 quarantine 属性（Gatekeeper）
-xattr -dr com.apple.quarantine "$BIN_DIR/codex" 2>/dev/null
 
 # ═══════════════════════════════════════════
 # 单实例锁（原子 mkdir 持锁，避免 [-f] 检查 + 写 PID 的 TOCTOU 竞态）
